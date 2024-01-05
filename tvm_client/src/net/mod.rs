@@ -37,14 +37,14 @@ pub use subscriptions::{
     subscribe, subscribe_collection, unsubscribe, ParamsOfSubscribe, ParamsOfSubscribeCollection,
     ResultOfSubscribeCollection, ResultOfSubscription, SubscriptionResponseType,
 };
-pub use ton_gql::{
-    AggregationFn, FieldAggregation, GraphQLQueryEvent, OrderBy, ParamsOfAggregateCollection,
-    ParamsOfQueryCollection, ParamsOfQueryCounterparties, ParamsOfQueryOperation, PostRequest,
-    SortDirection,
-};
 pub use transaction_tree::{
     query_transaction_tree, MessageNode, ParamsOfQueryTransactionTree,
     ResultOfQueryTransactionTree, TransactionNode,
+};
+pub use tvm_gql::{
+    AggregationFn, FieldAggregation, GraphQLQueryEvent, OrderBy, ParamsOfAggregateCollection,
+    ParamsOfQueryCollection, ParamsOfQueryCounterparties, ParamsOfQueryOperation, PostRequest,
+    SortDirection,
 };
 pub use types::{
     NetworkConfig, NetworkQueriesProtocol, ACCOUNTS_COLLECTION, BLOCKS_COLLECTION,
@@ -63,8 +63,8 @@ pub(crate) mod network_params;
 pub(crate) mod queries;
 mod server_link;
 pub(crate) mod subscriptions;
-mod ton_gql;
 pub(crate) mod transaction_tree;
+mod tvm_gql;
 pub(crate) mod types;
 mod websocket_link;
 

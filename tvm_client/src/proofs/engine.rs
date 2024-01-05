@@ -6,18 +6,18 @@ use std::sync::Arc;
 
 use failure::{bail, err_msg};
 use serde_json::Value;
-use ton_block::{BinTreeType, Block, Deserializable, InRefValue, ShardIdent, ShardStateUnsplit};
-use ton_types::{Result, UInt256};
+use tvm_block::{BinTreeType, Block, Deserializable, InRefValue, ShardIdent, ShardStateUnsplit};
+use tvm_types::{Result, UInt256};
 
 use crate::boc::internal::get_boc_hash;
 use crate::client::storage::{InMemoryKeyValueStorage, KeyValueStorage};
-use crate::ClientContext;
 use crate::encoding::base64_decode;
 use crate::error::ClientResult;
-use crate::net::{OrderBy, ParamsOfQueryCollection, query_collection, SortDirection};
-use crate::proofs::{BlockProof, ProofHelperEngine, resolve_initial_trusted_key_block};
+use crate::net::{query_collection, OrderBy, ParamsOfQueryCollection, SortDirection};
 use crate::proofs::Error;
+use crate::proofs::{resolve_initial_trusted_key_block, BlockProof, ProofHelperEngine};
 use crate::utils::json::JsonHelper;
+use crate::ClientContext;
 
 const ZEROSTATE_KEY: &str = "zerostate";
 const ZEROSTATE_RIGHT_BOUND_KEY: &str = "zs_right_boundary_seq_no";
@@ -65,7 +65,9 @@ impl ProofHelperEngineImpl {
         &self.storage
     }
 
-    async fn obtain_proof_storage(context: &Arc<ClientContext>) -> Result<Arc<dyn KeyValueStorage>> {
+    async fn obtain_proof_storage(
+        context: &Arc<ClientContext>,
+    ) -> Result<Arc<dyn KeyValueStorage>> {
         if let Some(storage) = context.proofs_storage.read().await.as_ref() {
             return Ok(Arc::clone(storage));
         }
@@ -84,7 +86,8 @@ impl ProofHelperEngineImpl {
                 crate::client::LocalStorage::new(
                     context.config.local_storage_path.clone(),
                     storage_name,
-                ).await?
+                )
+                .await?,
             ) as Arc<dyn KeyValueStorage>
         };
 
@@ -134,12 +137,10 @@ impl ProofHelperEngineImpl {
     }
 
     fn sorting_by_seq_no() -> Vec<OrderBy> {
-        vec![
-            OrderBy {
-                path: "seq_no".to_string(),
-                direction: SortDirection::ASC,
-            },
-        ]
+        vec![OrderBy {
+            path: "seq_no".to_string(),
+            direction: SortDirection::ASC,
+        }]
     }
 
     fn preprocess_query_result(blocks: Vec<Value>) -> Result<Vec<(u32, Value)>> {
@@ -153,7 +154,7 @@ impl ProofHelperEngineImpl {
             if seq_no != last_seq_no {
                 result.push((seq_no, block));
                 last_seq_no = seq_no;
-                last_gen_utime =  gen_utime;
+                last_gen_utime = gen_utime;
             } else if gen_utime > last_gen_utime {
                 let last_index = result.len() - 1;
                 result[last_index].1 = block;
@@ -165,18 +166,20 @@ impl ProofHelperEngineImpl {
     }
 
     async fn get_value(&self, key: &str) -> Result<Option<Value>> {
-        self.storage.get_str(key).await?
-            .map(|value_str| serde_json::from_str(&value_str)
-                .map_err(|err| err.into()))
+        self.storage
+            .get_str(key)
+            .await?
+            .map(|value_str| serde_json::from_str(&value_str).map_err(|err| err.into()))
             .transpose()
     }
 
     async fn put_value(&self, key: &str, value: &Value) -> Result<()> {
-        self.storage.put_str(
-            key,
-            &serde_json::to_string(value)
-                .map_err(|err| Error::internal_error(err))?,
-        ).await
+        self.storage
+            .put_str(
+                key,
+                &serde_json::to_string(value).map_err(|err| Error::internal_error(err))?,
+            )
+            .await
             .map_err(|err| err.into())
     }
 
@@ -189,28 +192,32 @@ impl ProofHelperEngineImpl {
     }
 
     pub(crate) async fn read_block(&self, root_hash: &str) -> Result<Option<Vec<u8>>> {
-        self.storage.get_bin(&Self::block_key(root_hash)).await
+        self.storage
+            .get_bin(&Self::block_key(root_hash))
+            .await
             .map_err(|err| err.into())
     }
 
     pub(crate) async fn write_block(&self, root_hash: &str, boc: &[u8]) -> Result<()> {
-        self.storage.put_bin(&Self::block_key(root_hash), boc).await
+        self.storage
+            .put_bin(&Self::block_key(root_hash), boc)
+            .await
             .map_err(|err| err.into())
     }
 
     pub(crate) async fn read_metadata_value_u32(&self, key: &str) -> Result<Option<u32>> {
-        Ok(
-            self.storage.get_bin(key).await?
-                .map(|vec|
-                    vec.try_into()
-                        .ok()
-                        .map(|arr| u32::from_le_bytes(arr))
-                ).flatten()
-        )
+        Ok(self
+            .storage
+            .get_bin(key)
+            .await?
+            .map(|vec| vec.try_into().ok().map(|arr| u32::from_le_bytes(arr)))
+            .flatten())
     }
 
     pub(crate) async fn write_metadata_value_u32(&self, key: &str, value: u32) -> Result<()> {
-        self.storage.put_bin(key, &value.to_le_bytes()).await
+        self.storage
+            .put_bin(key, &value.to_le_bytes())
+            .await
             .map_err(|err| err.into())
     }
 
@@ -222,21 +229,27 @@ impl ProofHelperEngineImpl {
     ) -> Result<()> {
         match self.read_metadata_value_u32(key).await? {
             None => self.write_metadata_value_u32(key, value).await,
-            Some(prev) => self.write_metadata_value_u32(key, process_value(prev, value)).await,
+            Some(prev) => {
+                self.write_metadata_value_u32(key, process_value(prev, value))
+                    .await
+            }
         }
     }
 
     pub(crate) async fn read_zs_right_bound(&self) -> Result<u32> {
-        self.read_metadata_value_u32(ZEROSTATE_RIGHT_BOUND_KEY).await
+        self.read_metadata_value_u32(ZEROSTATE_RIGHT_BOUND_KEY)
+            .await
             .map(|opt| opt.unwrap_or(0))
     }
 
     pub(crate) async fn update_zs_right_bound(&self, seq_no: u32) -> Result<()> {
-        self.update_metadata_value_u32(ZEROSTATE_RIGHT_BOUND_KEY, seq_no, std::cmp::max).await
+        self.update_metadata_value_u32(ZEROSTATE_RIGHT_BOUND_KEY, seq_no, std::cmp::max)
+            .await
     }
 
     pub(crate) async fn read_trusted_block_right_bound(&self, trusted_seq_no: u32) -> Result<u32> {
-        self.read_metadata_value_u32(&Self::trusted_block_right_bound_key(trusted_seq_no)).await
+        self.read_metadata_value_u32(&Self::trusted_block_right_bound_key(trusted_seq_no))
+            .await
             .map(|opt| opt.unwrap_or(trusted_seq_no))
     }
 
@@ -249,7 +262,8 @@ impl ProofHelperEngineImpl {
             &Self::trusted_block_right_bound_key(trusted_seq_no),
             right_bound_seq_no,
             std::cmp::max,
-        ).await
+        )
+        .await
     }
 
     pub(crate) async fn query_zerostate_boc(&self) -> Result<Vec<u8>> {
@@ -260,8 +274,10 @@ impl ProofHelperEngineImpl {
                 result: "boc".to_string(),
                 limit: Some(1),
                 ..Default::default()
-            }
-        ).await?.result;
+            },
+        )
+        .await?
+        .result;
 
         if zerostates.is_empty() {
             bail!("Unable to download network's zerostate from DApp server");
@@ -277,28 +293,31 @@ impl ProofHelperEngineImpl {
         mut mc_seq_no: u32,
     ) -> Result<Option<String>> {
         mc_seq_no += 1;
-        let blocks = Self::preprocess_query_result(query_collection(
-            Arc::clone(&self.context),
-            ParamsOfQueryCollection {
-                collection: "blocks".to_string(),
-                result: "seq_no gen_utime prev_ref{file_hash}".to_string(),
-                filter: Some(Self::filter_for_mc_block(mc_seq_no)),
-                order: Some(Self::sorting_by_seq_no()),
-                ..Default::default()
-            }
-        ).await?.result)?;
+        let blocks = Self::preprocess_query_result(
+            query_collection(
+                Arc::clone(&self.context),
+                ParamsOfQueryCollection {
+                    collection: "blocks".to_string(),
+                    result: "seq_no gen_utime prev_ref{file_hash}".to_string(),
+                    filter: Some(Self::filter_for_mc_block(mc_seq_no)),
+                    order: Some(Self::sorting_by_seq_no()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .result,
+        )?;
 
         if blocks.is_empty() {
-            return Ok(None)
+            return Ok(None);
         }
 
-        Ok(Some(blocks[0].1["prev_ref"].get_str("file_hash")?.to_string()))
+        Ok(Some(
+            blocks[0].1["prev_ref"].get_str("file_hash")?.to_string(),
+        ))
     }
 
-    pub(crate) async fn download_block_boc(
-        &self,
-        root_hash: &str,
-    ) -> Result<Vec<u8>> {
+    pub(crate) async fn download_block_boc(&self, root_hash: &str) -> Result<Vec<u8>> {
         if let Some(boc) = self.read_block(root_hash).await? {
             Ok(boc)
         } else {
@@ -310,8 +329,10 @@ impl ProofHelperEngineImpl {
                     filter: Some(Self::filter_for_block(root_hash)),
                     limit: Some(1),
                     ..Default::default()
-                }
-            ).await?.result;
+                },
+            )
+            .await?
+            .result;
 
             if blocks.is_empty() {
                 bail!(
@@ -344,21 +365,27 @@ impl ProofHelperEngineImpl {
         if let Some(file_hash) = self.query_file_hash_from_next_block(mc_seq_no).await? {
             return Ok(file_hash);
         }
-        let file_hash = self.download_block_boc_and_calc_file_hash(root_hash).await?;
+        let file_hash = self
+            .download_block_boc_and_calc_file_hash(root_hash)
+            .await?;
         Ok(file_hash.as_hex_string())
     }
 
     pub(crate) async fn query_mc_block_proof(&self, mc_seq_no: u32) -> Result<Value> {
-        let mut blocks = Self::preprocess_query_result(query_collection(
-            Arc::clone(&self.context),
-            ParamsOfQueryCollection {
-                collection: "blocks".to_string(),
-                result: PROOF_QUERY_RESULT.to_string(),
-                filter: Some(Self::filter_for_mc_block(mc_seq_no)),
-                order: Some(Self::sorting_by_seq_no()),
-                ..Default::default()
-            }
-        ).await?.result)?;
+        let mut blocks = Self::preprocess_query_result(
+            query_collection(
+                Arc::clone(&self.context),
+                ParamsOfQueryCollection {
+                    collection: "blocks".to_string(),
+                    result: PROOF_QUERY_RESULT.to_string(),
+                    filter: Some(Self::filter_for_mc_block(mc_seq_no)),
+                    order: Some(Self::sorting_by_seq_no()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .result,
+        )?;
 
         if blocks.is_empty() {
             bail!(
@@ -368,10 +395,10 @@ impl ProofHelperEngineImpl {
         }
 
         let (seq_no, mut result) = blocks.remove(0);
-        result["file_hash"] = self.query_mc_block_file_hash(
-            seq_no,
-            result.get_str("id")?,
-        ).await?.into();
+        result["file_hash"] = self
+            .query_mc_block_file_hash(seq_no, result.get_str("id")?)
+            .await?
+            .into();
 
         Ok(result)
     }
@@ -446,8 +473,10 @@ impl ProofHelperEngineImpl {
                     })),
                     order: Some(Self::sorting_by_seq_no()),
                     ..Default::default()
-                }
-            ).await?.result;
+                },
+            )
+            .await?
+            .result;
 
             if key_blocks.is_empty() {
                 return Ok(result);
@@ -463,25 +492,29 @@ impl ProofHelperEngineImpl {
         mut proofs_sorted: &mut [(u32, Value)],
     ) -> Result<()> {
         while proofs_sorted.len() > 0 {
-            let mut blocks = Self::preprocess_query_result(query_collection(
-                Arc::clone(&self.context),
-                ParamsOfQueryCollection {
-                    collection: "blocks".to_string(),
-                    result: "seq_no gen_utime prev_ref{file_hash}".to_string(),
-                    filter: Some(json!({
-                        "workchain_id": {
-                            "eq": -1,
-                        },
-                        "seq_no": {
-                            "in": proofs_sorted.iter()
-                                    .map(|(seq_no, _value)| *seq_no + 1)
-                                    .collect::<Vec<u32>>(),
-                        }
-                    })),
-                    order: Some(Self::sorting_by_seq_no()),
-                    ..Default::default()
-                }
-            ).await?.result)?;
+            let mut blocks = Self::preprocess_query_result(
+                query_collection(
+                    Arc::clone(&self.context),
+                    ParamsOfQueryCollection {
+                        collection: "blocks".to_string(),
+                        result: "seq_no gen_utime prev_ref{file_hash}".to_string(),
+                        filter: Some(json!({
+                            "workchain_id": {
+                                "eq": -1,
+                            },
+                            "seq_no": {
+                                "in": proofs_sorted.iter()
+                                        .map(|(seq_no, _value)| *seq_no + 1)
+                                        .collect::<Vec<u32>>(),
+                            }
+                        })),
+                        order: Some(Self::sorting_by_seq_no()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .result,
+            )?;
 
             if proofs_sorted.len() < blocks.len() {
                 bail!(
@@ -519,7 +552,7 @@ impl ProofHelperEngineImpl {
         trusted_root_hash: &UInt256,
     ) -> Result<BlockProof> {
         let proof_json = self.query_mc_block_proof(trusted_seq_no).await?;
-        let proof =  BlockProof::from_value(&proof_json)?;
+        let proof = BlockProof::from_value(&proof_json)?;
         if proof.id().seq_no() != trusted_seq_no {
             bail!(
                 "Proof for trusted key-block seq_no ({}) mismatches trusted key-block seq_no ({})",
@@ -534,7 +567,8 @@ impl ProofHelperEngineImpl {
                 trusted_root_hash,
             )
         }
-        self.write_mc_block_proof(trusted_seq_no, &proof_json).await?;
+        self.write_mc_block_proof(trusted_seq_no, &proof_json)
+            .await?;
 
         Ok(proof)
     }
@@ -548,7 +582,8 @@ impl ProofHelperEngineImpl {
             return BlockProof::from_value(&value);
         }
 
-        self.download_trusted_key_block_proof(trusted_seq_no, trusted_root_hash).await
+        self.download_trusted_key_block_proof(trusted_seq_no, trusted_root_hash)
+            .await
     }
 
     pub(crate) async fn download_proof_chain<F: Fn(u32) -> R, R: Future<Output = Result<()>>>(
@@ -582,7 +617,8 @@ impl ProofHelperEngineImpl {
         shard: &ShardIdent,
     ) -> Result<(u32, UInt256)> {
         let extra = mc_block.read_extra()?;
-        let mc_extra = extra.read_custom()?
+        let mc_extra = extra
+            .read_custom()?
             .ok_or_else(|| err_msg("Unable to read McBlockExtra"))?;
 
         let mut result = None;
@@ -597,9 +633,12 @@ impl ProofHelperEngineImpl {
             })?;
         }
 
-        result.ok_or_else(
-            || err_msg(format!("Top block for the given shard ({}) not found", shard))
-        )
+        result.ok_or_else(|| {
+            err_msg(format!(
+                "Top block for the given shard ({}) not found",
+                shard
+            ))
+        })
     }
 
     pub(crate) async fn query_closest_mc_block_for_shard_block(
@@ -609,11 +648,12 @@ impl ProofHelperEngineImpl {
         shard_block_seq_no: u32,
     ) -> Result<Option<u32>> {
         loop {
-            let blocks = Self::preprocess_query_result(query_collection(
-                Arc::clone(&self.context),
-                ParamsOfQueryCollection {
-                    collection: "blocks".to_string(),
-                    result: "\
+            let blocks = Self::preprocess_query_result(
+                query_collection(
+                    Arc::clone(&self.context),
+                    ParamsOfQueryCollection {
+                        collection: "blocks".to_string(),
+                        result: "\
                         seq_no \
                         gen_utime \
                         master { \
@@ -625,16 +665,20 @@ impl ProofHelperEngineImpl {
                                     root_hash \
                                 }\
                             }\
-                        }".to_string(),
-                    filter: Some(json!({
-                        "workchain_id": { "eq": -1 },
-                        "seq_no": { "ge": *first_mc_seq_no },
-                    })),
-                    order: Some(Self::sorting_by_seq_no()),
-                    limit: Some(10),
-                    ..Default::default()
-                }
-            ).await?.result)?;
+                        }"
+                        .to_string(),
+                        filter: Some(json!({
+                            "workchain_id": { "eq": -1 },
+                            "seq_no": { "ge": *first_mc_seq_no },
+                        })),
+                        order: Some(Self::sorting_by_seq_no()),
+                        limit: Some(10),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .result,
+            )?;
 
             if blocks.is_empty() {
                 return Ok(None);
@@ -647,7 +691,7 @@ impl ProofHelperEngineImpl {
                         && item["shard"] == shard.shard_prefix_as_str_with_tag()
                         && item["descr"].get_u32("seq_no")? >= shard_block_seq_no
                     {
-                        return Ok(Some(*seq_no))
+                        return Ok(Some(*seq_no));
                     }
                 }
             }
@@ -661,25 +705,30 @@ impl ProofHelperEngineImpl {
         shard: &ShardIdent,
         seq_no_range: Range<u32>,
     ) -> Result<Vec<Vec<u8>>> {
-        let blocks = Self::preprocess_query_result(query_collection(
-            Arc::clone(&self.context),
-            ParamsOfQueryCollection {
-                collection: "blocks".to_string(),
-                result: "\
+        let blocks = Self::preprocess_query_result(
+            query_collection(
+                Arc::clone(&self.context),
+                ParamsOfQueryCollection {
+                    collection: "blocks".to_string(),
+                    result: "\
                     seq_no \
                     gen_utime \
                     id \
                     boc \
-                ".to_string(),
-                filter: Some(json!({
-                    "workchain_id": { "eq": shard.workchain_id() },
-                    "shard": { "eq": shard.shard_prefix_as_str_with_tag() },
-                    "seq_no": { "in": seq_no_range.clone().collect::<Vec<u32>>() },
-                })),
-                order: Some(Self::sorting_by_seq_no()),
-                ..Default::default()
-            }
-        ).await?.result)?;
+                "
+                    .to_string(),
+                    filter: Some(json!({
+                        "workchain_id": { "eq": shard.workchain_id() },
+                        "shard": { "eq": shard.shard_prefix_as_str_with_tag() },
+                        "seq_no": { "in": seq_no_range.clone().collect::<Vec<u32>>() },
+                    })),
+                    order: Some(Self::sorting_by_seq_no()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .result,
+        )?;
 
         if blocks.is_empty() {
             bail!(
@@ -724,31 +773,34 @@ impl ProofHelperEngineImpl {
     }
 
     pub async fn check_shard_block(&self, boc: &[u8]) -> Result<()> {
-        let cell = ton_types::boc::read_single_root_boc(&boc)?;
+        let cell = tvm_types::boc::read_single_root_boc(&boc)?;
         let root_hash = cell.repr_hash();
         let block = Block::construct_from_cell(cell)?;
 
         let info = block.info.read_struct()?;
 
-        let master_ref = info.read_master_ref()?
+        let master_ref = info
+            .read_master_ref()?
             .ok_or_else(|| err_msg("Unable to read master_ref of block"))?;
 
         let mut first_mc_seq_no = master_ref.master.seq_no;
         loop {
-            if let Some(mc_seq_no) = self.query_closest_mc_block_for_shard_block(
+            if let Some(mc_seq_no) = self
+                .query_closest_mc_block_for_shard_block(
                     &mut first_mc_seq_no,
                     info.shard(),
                     info.seq_no(),
-                ).await?
+                )
+                .await?
             {
                 let mc_proof_json = self.query_mc_block_proof(mc_seq_no).await?;
                 let mc_proof = BlockProof::from_value(&mc_proof_json)?;
                 let (_mc_block, _mc_block_info) = mc_proof.check_proof(self).await?;
 
-                let mc_boc = self.download_block_boc(
-                    &mc_proof.id().root_hash().as_hex_string(),
-                ).await?;
-                let mc_cell = ton_types::boc::read_single_root_boc(&mc_boc)?;
+                let mc_boc = self
+                    .download_block_boc(&mc_proof.id().root_hash().as_hex_string())
+                    .await?;
+                let mc_cell = tvm_types::boc::read_single_root_boc(&mc_boc)?;
 
                 if mc_cell.repr_hash() != *mc_proof.id().root_hash() {
                     bail!(
@@ -757,7 +809,8 @@ impl ProofHelperEngineImpl {
                     );
                 }
 
-                self.write_block(&mc_cell.repr_hash().as_hex_string(), &mc_boc).await?;
+                self.write_block(&mc_cell.repr_hash().as_hex_string(), &mc_boc)
+                    .await?;
 
                 let mc_block = Block::construct_from_bytes(&mc_boc)?;
 
@@ -766,7 +819,8 @@ impl ProofHelperEngineImpl {
 
                 if top_seq_no == info.seq_no() {
                     if top_root_hash != root_hash {
-                        bail!("Proof checking failed: masterchain block references shard block \
+                        bail!(
+                            "Proof checking failed: masterchain block references shard block \
                             with different `root_hash`: reference {}, but shard block has {}",
                             top_root_hash,
                             root_hash,
@@ -775,11 +829,9 @@ impl ProofHelperEngineImpl {
                     return Ok(());
                 }
 
-                let shard_chain = self.query_shard_block_bocs(
-                    info.shard(),
-                    (info.seq_no() + 1)..(top_seq_no + 1),
-                ).await?;
-
+                let shard_chain = self
+                    .query_shard_block_bocs(info.shard(), (info.seq_no() + 1)..(top_seq_no + 1))
+                    .await?;
 
                 let check_with_last_prev_ref =
                     |seq_no, root_hash, last_prev_ref_seq_no, last_prev_ref_root_hash| {
@@ -808,7 +860,7 @@ impl ProofHelperEngineImpl {
                 let mut last_prev_ref_seq_no = top_seq_no;
                 let mut last_prev_ref_root_hash = top_root_hash;
                 for boc in shard_chain.iter().rev() {
-                    let cell = ton_types::boc::read_single_root_boc(&boc)?;
+                    let cell = tvm_types::boc::read_single_root_boc(&boc)?;
                     let root_hash = cell.repr_hash();
                     let block = Block::construct_from_cell(cell)?;
                     let info = block.read_info()?;
@@ -853,8 +905,10 @@ impl ProofHelperEngineImpl {
                 })),
                 limit: Some(1),
                 ..Default::default()
-            }
-        ).await?.result;
+            },
+        )
+        .await?
+        .result;
 
         if transactions.is_empty() {
             bail!("Unable to download transaction data from DApp server");
@@ -876,8 +930,10 @@ impl ProofHelperEngineImpl {
                 })),
                 limit: Some(1),
                 ..Default::default()
-            }
-        ).await?.result;
+            },
+        )
+        .await?
+        .result;
 
         if messages.is_empty() {
             bail!("Unable to download message data from DApp server");
@@ -897,16 +953,17 @@ impl ProofHelperEngineImpl {
         //       1. `write_block()` change to `write_untrusted_block()`
         //       2. also add `write_trusted_block()` and `remove_untrusted_block()`
         //          (or `trust_block()` for moving block from untrusted to trusted storage) functions.
-        self.write_block(&root_hash.as_hex_string(), &boc).await
+        self.write_block(&root_hash.as_hex_string(), &boc)
+            .await
             .map_err(|err| Error::internal_error(err))?;
 
-        let info = block.read_info()
-            .map_err(|err| Error::invalid_data(err))?;
+        let info = block.read_info().map_err(|err| Error::invalid_data(err))?;
         if info.shard().is_masterchain() {
             self.check_mc_block_proof(info.seq_no(), &root_hash).await
         } else {
             self.check_shard_block(&boc).await
-        }.map_err(|err| Error::proof_check_failed(err))?;
+        }
+        .map_err(|err| Error::proof_check_failed(err))?;
 
         Ok(())
     }
@@ -941,41 +998,46 @@ impl ProofHelperEngine for ProofHelperEngineImpl {
             return BlockProof::from_value(&proof_json);
         }
 
-        let (trusted_seq_no, trusted_root_hash) = resolve_initial_trusted_key_block(self.context(), mc_seq_no).await?;
+        let (trusted_seq_no, trusted_root_hash) =
+            resolve_initial_trusted_key_block(self.context(), mc_seq_no).await?;
         let zs_right_bound = self.read_zs_right_bound().await?;
         let trusted_right_bound = self.read_trusted_block_right_bound(trusted_seq_no).await?;
 
         if mc_seq_no == trusted_seq_no {
-            return self.download_trusted_key_block_proof(trusted_seq_no, &trusted_root_hash).await;
+            return self
+                .download_trusted_key_block_proof(trusted_seq_no, &trusted_root_hash)
+                .await;
         }
 
-        self.require_trusted_key_block_proof(trusted_seq_no, &trusted_root_hash).await?;
+        self.require_trusted_key_block_proof(trusted_seq_no, &trusted_root_hash)
+            .await?;
 
-        let update_zs_right = move |mc_seq_no| async move {
-            self.update_zs_right_bound(mc_seq_no).await
-        };
+        let update_zs_right =
+            move |mc_seq_no| async move { self.update_zs_right_bound(mc_seq_no).await };
 
         let update_trusted_right = move |mc_seq_no| async move {
-            self.update_trusted_block_right_bound(trusted_seq_no, mc_seq_no).await
+            self.update_trusted_block_right_bound(trusted_seq_no, mc_seq_no)
+                .await
         };
 
         if mc_seq_no > trusted_right_bound {
-            self.download_proof_chain(trusted_right_bound + 1..mc_seq_no + 1, update_trusted_right).await
+            self.download_proof_chain(trusted_right_bound + 1..mc_seq_no + 1, update_trusted_right)
+                .await
         } else if mc_seq_no < trusted_seq_no && mc_seq_no > zs_right_bound {
-            self.download_proof_chain(zs_right_bound + 1..mc_seq_no + 1, update_zs_right).await
+            self.download_proof_chain(zs_right_bound + 1..mc_seq_no + 1, update_zs_right)
+                .await
         } else if mc_seq_no <= zs_right_bound {
             // Chain from zerostate is broken
-            self.download_proof_chain(1..mc_seq_no + 1, update_zs_right).await
+            self.download_proof_chain(1..mc_seq_no + 1, update_zs_right)
+                .await
         } else if mc_seq_no > trusted_seq_no && mc_seq_no <= trusted_right_bound {
             // Chain from trusted key-block to the right is broken
-            self.download_proof_chain(trusted_seq_no + 1..mc_seq_no + 1, update_trusted_right).await
+            self.download_proof_chain(trusted_seq_no + 1..mc_seq_no + 1, update_trusted_right)
+                .await
         } else {
             unreachable!(
                 "mc_seq_no: {}, zs_right: {}, trusted_right: {}, trusted_seq_no: {:?}",
-                mc_seq_no,
-                zs_right_bound,
-                trusted_right_bound,
-                trusted_seq_no,
+                mc_seq_no, zs_right_bound, trusted_right_bound, trusted_seq_no,
             )
         }
     }

@@ -17,14 +17,16 @@ use crate::{AbiContract, MessageId};
 
 use chrono::prelude::Utc;
 use serde_json::Value;
-use ton_abi::PublicKeyData;
 use std::convert::{Into, TryInto};
 use std::io::{Read, Seek};
-use ton_abi::json_abi::DecodedMessage;
-use ton_block::{AccountIdPrefixFull, Deserializable, ExternalInboundMessageHeader, GetRepresentationHash,
-    Message as TvmMessage, MsgAddressInt, Serializable, ShardIdent, StateInit,
-    InternalMessageHeader, CurrencyCollection};
-use ton_types::{error, fail, AccountId, Result, SliceData, BocReader, Ed25519PrivateKey};
+use tvm_abi::json_abi::DecodedMessage;
+use tvm_abi::PublicKeyData;
+use tvm_block::{
+    AccountIdPrefixFull, CurrencyCollection, Deserializable, ExternalInboundMessageHeader,
+    GetRepresentationHash, InternalMessageHeader, Message as TvmMessage, MsgAddressInt,
+    Serializable, ShardIdent, StateInit,
+};
+use tvm_types::{error, fail, AccountId, BocReader, Ed25519PrivateKey, Result, SliceData};
 
 pub struct Contract {}
 
@@ -88,14 +90,19 @@ impl ContractImage {
     where
         T: Read + Seek,
     {
-        let cell = BocReader::new().read(state_init_bag)?.withdraw_single_root()?;
+        let cell = BocReader::new()
+            .read(state_init_bag)?
+            .withdraw_single_root()?;
         let state_init: StateInit = StateInit::construct_from_cell(cell)?;
         let id = state_init.hash()?.into();
 
         Ok(Self { state_init, id })
     }
 
-    pub fn from_state_init_and_key<T>(state_init_bag: &mut T, pub_key: &PublicKeyData) -> Result<Self>
+    pub fn from_state_init_and_key<T>(
+        state_init_bag: &mut T,
+        pub_key: &PublicKeyData,
+    ) -> Result<Self>
     where
         T: Read + Seek,
     {
@@ -105,7 +112,7 @@ impl ContractImage {
         Ok(result)
     }
 
-    pub fn from_cell(cell: ton_types::Cell) -> Result<Self> {
+    pub fn from_cell(cell: tvm_types::Cell) -> Result<Self> {
         let id = cell.repr_hash().into();
         let state_init = StateInit::construct_from_cell(cell)?;
 
@@ -135,7 +142,7 @@ impl ContractImage {
 
     pub fn get_serialized_code(&self) -> Result<Vec<u8>> {
         match &self.state_init.code {
-            Some(cell) => ton_types::boc::write_boc(cell),
+            Some(cell) => tvm_types::boc::write_boc(cell),
             None => bail!(SdkError::InvalidData {
                 msg: "State init has no code".to_owned()
             }),
@@ -144,7 +151,7 @@ impl ContractImage {
 
     pub fn get_serialized_data(&self) -> Result<Vec<u8>> {
         match &self.state_init.data {
-            Some(cell) => ton_types::boc::write_boc(cell),
+            Some(cell) => tvm_types::boc::write_boc(cell),
             None => bail!(SdkError::InvalidData {
                 msg: "State init has no data".to_owned()
             }),
@@ -152,7 +159,7 @@ impl ContractImage {
     }
 
     pub fn serialize(&self) -> Result<Vec<u8>> {
-        ton_types::boc::write_boc(&self.state_init.serialize()?)
+        tvm_types::boc::write_boc(&self.state_init.serialize()?)
     }
 
     // Returns future contract's state_init struct
@@ -174,17 +181,21 @@ impl ContractImage {
     }
 
     ///Allows to change initial values for public contract variables
-    pub fn update_data(&mut self, data_map_supported: bool, data_json: &str, abi_json: &str) -> Result<()> {
+    pub fn update_data(
+        &mut self,
+        data_map_supported: bool,
+        data_json: &str,
+        abi_json: &str,
+    ) -> Result<()> {
         let new_data = if data_map_supported {
-            ton_abi::json_abi::update_contract_data(
+            tvm_abi::json_abi::update_contract_data(
                 abi_json,
                 data_json,
                 SliceData::load_cell(self.state_init.data.clone().unwrap_or_default())?,
             )?
             .into_cell()
         } else {
-            ton_abi::json_abi::encode_storage_fields(abi_json, Some(data_json))?
-                .into_cell()?
+            tvm_abi::json_abi::encode_storage_fields(abi_json, Some(data_json))?.into_cell()?
         };
 
         self.state_init.set_data(new_data);
@@ -215,7 +226,7 @@ impl Contract {
         internal: bool,
         allow_partial: bool,
     ) -> Result<String> {
-        ton_abi::json_abi::decode_function_response(
+        tvm_abi::json_abi::decode_function_response(
             abi,
             function,
             response,
@@ -244,7 +255,7 @@ impl Contract {
         internal: bool,
         allow_partial: bool,
     ) -> Result<DecodedMessage> {
-        ton_abi::json_abi::decode_unknown_function_response(abi, response, internal, allow_partial)
+        tvm_abi::json_abi::decode_unknown_function_response(abi, response, internal, allow_partial)
     }
 
     /// Decodes output parameters returned by contract function call from serialized message body
@@ -266,7 +277,7 @@ impl Contract {
         internal: bool,
         allow_partial: bool,
     ) -> Result<DecodedMessage> {
-        ton_abi::json_abi::decode_unknown_function_call(abi, response, internal, allow_partial)
+        tvm_abi::json_abi::decode_unknown_function_call(abi, response, internal, allow_partial)
     }
 
     /// Decodes output parameters returned by contract function call from serialized message body
@@ -292,7 +303,7 @@ impl Contract {
         key_pair: Option<&Ed25519PrivateKey>,
     ) -> Result<SdkMessage> {
         // pack params into bag of cells via ABI
-        let msg_body = ton_abi::encode_function_call(
+        let msg_body = tvm_abi::encode_function_call(
             &params.abi,
             &params.func,
             params.header.as_deref(),
@@ -327,7 +338,7 @@ impl Contract {
         params: &FunctionCallSet,
     ) -> Result<SdkMessage> {
         // pack params into bag of cells via ABI
-        let msg_body = ton_abi::encode_function_call(
+        let msg_body = tvm_abi::encode_function_call(
             &params.abi,
             &params.func,
             None,
@@ -380,7 +391,7 @@ impl Contract {
         params: &FunctionCallSet,
     ) -> Result<MessageToSign> {
         // pack params into bag of cells via ABI
-        let (msg_body, data_to_sign) = ton_abi::prepare_function_call_for_sign(
+        let (msg_body, data_to_sign) = tvm_abi::prepare_function_call_for_sign(
             &params.abi,
             &params.func,
             params.header.as_deref(),
@@ -408,7 +419,7 @@ impl Contract {
         key_pair: Option<&Ed25519PrivateKey>,
         workchain_id: i32,
     ) -> Result<SdkMessage> {
-        let msg_body = ton_abi::encode_function_call(
+        let msg_body = tvm_abi::encode_function_call(
             &params.abi,
             &params.func,
             params.header.as_deref(),
@@ -482,7 +493,7 @@ impl Contract {
         image: ContractImage,
         workchain_id: i32,
     ) -> Result<MessageToSign> {
-        let (msg_body, data_to_sign) = ton_abi::prepare_function_call_for_sign(
+        let (msg_body, data_to_sign) = tvm_abi::prepare_function_call_for_sign(
             &params.abi,
             &params.func,
             params.header.as_deref(),
@@ -510,7 +521,7 @@ impl Contract {
         bounce: bool,
         value: CurrencyCollection,
     ) -> Result<Vec<u8>> {
-        let msg_body = ton_abi::encode_function_call(
+        let msg_body = tvm_abi::encode_function_call(
             &params.abi,
             &params.func,
             None,
@@ -551,11 +562,12 @@ impl Contract {
             msg: "No message body".to_owned()
         }))?;
 
-        let signed_body = ton_abi::add_sign_to_function_call(
+        let signed_body = tvm_abi::add_sign_to_function_call(
             abi,
             signature.try_into()?,
             public_key.map(|slice| slice.try_into()).transpose()?,
-            body)?;
+            body,
+        )?;
         message.set_body(SliceData::load_cell(signed_body.into_cell()?)?);
 
         let address = match message.dst_ref() {
@@ -594,7 +606,7 @@ impl Contract {
         let signed_body = abi.add_sign_to_encoded_input(
             signature.try_into()?,
             public_key.map(|slice| slice.try_into()).transpose()?,
-            body
+            body,
         )?;
         message.set_body(SliceData::load_cell(signed_body.into_cell()?)?);
 
@@ -692,14 +704,14 @@ impl Contract {
     pub fn serialize_message(msg: &TvmMessage) -> Result<(Vec<u8>, MessageId)> {
         let cells = msg.write_to_new_cell()?.into_cell()?;
         Ok((
-            ton_types::boc::write_boc(&cells)?,
+            tvm_types::boc::write_boc(&cells)?,
             (&cells.repr_hash().as_slice()[..]).into(),
         ))
     }
 
     /// Deserializes tree of cells from byte array into `SliceData`
     pub fn deserialize_tree_to_slice(data: &[u8]) -> Result<SliceData> {
-        SliceData::load_cell(ton_types::boc::read_single_root_boc(&data)?)
+        SliceData::load_cell(tvm_types::boc::read_single_root_boc(&data)?)
     }
 
     pub fn get_dst_from_msg(msg: &[u8]) -> Result<MsgAddressInt> {

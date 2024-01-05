@@ -17,8 +17,8 @@ use crate::tvm::ErrorCode as TvmErrorCode;
 use crate::tvm::{AccountForExecutor, ParamsOfRunExecutor, ResultOfRunExecutor};
 use crate::utils::conversion::abi_uint;
 use api_info::ApiModule;
-use ever_struct::scheme::TVC;
-use ton_block::{Serializable, StateInit};
+use tvm_block::{Serializable, StateInit};
+use tvm_struct::scheme::TVC;
 
 fn processing_event_name(e: Option<&ProcessingEvent>) -> &str {
     if let Some(e) = e {
@@ -792,12 +792,10 @@ fn test_process_message_sync() {
     client.get_tokens_from_giver_sync(&encoded.address, None);
 
     let output = client
-        .process_message_sync(
-            ParamsOfProcessMessage {
-                message_encode_params: encode_params,
-                send_events: true,
-            },
-        )
+        .process_message_sync(ParamsOfProcessMessage {
+            message_encode_params: encode_params,
+            send_events: true,
+        })
         .unwrap();
 
     assert!(output.fees.total_account_fees > 0);
@@ -811,23 +809,21 @@ fn test_process_message_sync() {
     );
 
     let output = client
-        .process_message_sync(
-            ParamsOfProcessMessage {
-                message_encode_params: ParamsOfEncodeMessage {
-                    abi: abi.clone(),
-                    address: Some(encoded.address.clone()),
-                    call_set: CallSet::some_with_function_and_input(
-                        "returnValue",
-                        json!({
-                            "id": "0x1"
-                        }),
-                    ),
-                    signer: Signer::Keys { keys: keys.clone() },
-                    ..Default::default()
-                },
-                send_events: true,
+        .process_message_sync(ParamsOfProcessMessage {
+            message_encode_params: ParamsOfEncodeMessage {
+                abi: abi.clone(),
+                address: Some(encoded.address.clone()),
+                call_set: CallSet::some_with_function_and_input(
+                    "returnValue",
+                    json!({
+                        "id": "0x1"
+                    }),
+                ),
+                signer: Signer::Keys { keys: keys.clone() },
+                ..Default::default()
             },
-        )
+            send_events: true,
+        })
         .unwrap();
     assert_eq!(output.out_messages.len(), 2);
     assert_eq!(

@@ -21,13 +21,13 @@ api_info = { path = '../api/info' }
 tvm_sdk = { default-features = false, path = '../tvm_sdk' }
 tvm_client_processing = { default-features = false, path = '../tvm_client_processing' }
 
-tvm_abi = { git = 'https://github.com/tvmlabs/ever-abi.git',  tag = '2.4.10' }
-tvm_block = { git = 'https://github.com/tvmlabs/ever-block.git', tag = '1.9.118' }
-tvm_block_json = { git = 'https://github.com/tvmlabs/ever-block-json.git', tag = '0.7.206' }
-tvm_types = { git = 'https://github.com/tvmlabs/ever-types.git', tag = '2.0.31' }
-tvm_executor = { features = ['signature_with_id'], git = 'https://github.com/tvmlabs/ever-executor.git', tag = '1.16.98' }
-tvm_vm = { features = ['signature_with_id', 'signature_no_check'], git = 'https://github.com/tvmlabs/ever-vm.git', tag = '1.8.226' }
-ever-struct = { git = 'https://github.com/tvmlabs/ever-struct.git', tag = '1.0.14' }
+tvm_abi = { git = 'https://github.com/tvmlabs/tvm-abi.git', branch = "main" }
+tvm_block = { git = 'https://github.com/tvmlabs/tvm-block.git', branch = "main" }
+tvm_block_json = { git = 'https://github.com/tvmlabs/tvm-block-json.git', branch = "main" }
+tvm_types = { git = 'https://github.com/tvmlabs/tvm-types.git', branch = "main" }
+tvm_executor = { features = ['signature_with_id'], git = 'https://github.com/tvmlabs/tvm-executor.git', branch = "main" }
+tvm_vm = { features = ['signature_with_id', 'signature_no_check'], git = 'https://github.com/tvmlabs/tvm-vm.git', branch = "main" }
+tvm_struct = { git = 'https://github.com/tvmlabs/tvm-struct.git', branch = "main" }
 
 lockfree = { git = 'https://github.com/tvmlabs/lockfree.git', package = 'lockfree' }
 sodalite = { features = [ 'rand' ], git = 'https://github.com/tvmlabs/sodalite.git' }

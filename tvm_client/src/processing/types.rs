@@ -1,7 +1,7 @@
 use crate::abi::DecodedMessageBody;
 use crate::error::ClientError;
 use serde_json::Value;
-use ton_sdk::TransactionFees;
+use tvm_sdk::TransactionFees;
 
 #[derive(Serialize, Deserialize, ApiType, Default, Debug, PartialEq, Clone)]
 pub struct DecodedOutput {
@@ -63,7 +63,7 @@ pub enum ProcessingEvent {
         error: ClientError,
         message_id: String,
         message_dst: String,
-     },
+    },
 
     /// Notifies the app that the message will be sent to the network.
     /// This event means that the account's current shard block was successfully fetched
@@ -190,5 +190,5 @@ pub enum ProcessingEvent {
         message_id: String,
         message_dst: String,
         error: ClientError,
-    }
+    },
 }

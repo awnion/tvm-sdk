@@ -13,13 +13,13 @@
  */
 
 use super::Error;
+use crate::boc::internal::deserialize_object_from_boc;
 use crate::client::{ClientContext, NetworkParams};
 use crate::error::ClientResult;
 use crate::net::network_params::get_default_params;
-use crate::boc::internal::deserialize_object_from_boc;
 use std::sync::Arc;
-use ton_executor::BlockchainConfig;
-use ton_vm::executor::BehaviorModifiers;
+use tvm_executor::BlockchainConfig;
+use tvm_vm::executor::BehaviorModifiers;
 
 #[derive(Serialize, Deserialize, ApiType, Clone, Default)]
 pub struct ExecutionOptions {
@@ -48,7 +48,10 @@ pub(crate) struct ResolvedExecutionOptions {
     pub behavior_modifiers: BehaviorModifiers,
 }
 
-pub(crate) fn blockchain_config_from_boc(context: &ClientContext, b64: &str) -> ClientResult<BlockchainConfig> {
+pub(crate) fn blockchain_config_from_boc(
+    context: &ClientContext,
+    b64: &str,
+) -> ClientResult<BlockchainConfig> {
     let config_params = deserialize_object_from_boc(context, b64, "blockchain config")?;
     BlockchainConfig::with_config(config_params.object)
         .map_err(|err| Error::can_not_read_blockchain_config(err))
@@ -61,9 +64,9 @@ impl ResolvedExecutionOptions {
     ) -> ClientResult<Self> {
         let options = options.unwrap_or_default();
 
-        let params = resolve_network_params(
-            context, options.blockchain_config, options.signature_id
-        ).await?;
+        let params =
+            resolve_network_params(context, options.blockchain_config, options.signature_id)
+                .await?;
 
         let block_lt = options
             .block_lt
@@ -92,30 +95,28 @@ pub(crate) async fn resolve_network_params(
     provided_config: Option<String>,
     provided_global_id: Option<i32>,
 ) -> ClientResult<NetworkParams> {
-    match (provided_config, provided_global_id.or(context.config.network.signature_id)) {
-        (Some(config), Some(global_id)) => {
-            Ok(NetworkParams {
-                blockchain_config: Arc::new(blockchain_config_from_boc(context, &config)?),
-                global_id,
-            })
-        },
+    match (
+        provided_config,
+        provided_global_id.or(context.config.network.signature_id),
+    ) {
+        (Some(config), Some(global_id)) => Ok(NetworkParams {
+            blockchain_config: Arc::new(blockchain_config_from_boc(context, &config)?),
+            global_id,
+        }),
         (Some(config), None) => {
             let default = get_default_params(context).await?;
             Ok(NetworkParams {
                 blockchain_config: Arc::new(blockchain_config_from_boc(context, &config)?),
                 global_id: default.global_id,
             })
-        },
+        }
         (None, Some(global_id)) => {
             let default = get_default_params(context).await?;
             Ok(NetworkParams {
                 blockchain_config: default.blockchain_config,
                 global_id,
             })
-        },
-        (None, None) => {
-            get_default_params(context).await
         }
+        (None, None) => get_default_params(context).await,
     }
 }
-

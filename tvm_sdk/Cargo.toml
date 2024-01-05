@@ -6,9 +6,9 @@ license = 'Apache-2.0'
 authors = [ 'TON Labs LTD <support@tonlabs.io>' ]
 
 [dependencies]
-tvm_abi = { git = 'https://github.com/tvmlabs/ever-abi.git',  tag = '2.4.10' }
-tvm_block = { git = 'https://github.com/tvmlabs/ever-block.git', tag = '1.9.118' }
-tvm_types = { git = 'https://github.com/tvmlabs/ever-types.git', tag = '2.0.31' }
+tvm_abi = { git = 'https://github.com/tvmlabs/tvm-abi.git', branch = "main" }
+tvm_block = { git = 'https://github.com/tvmlabs/tvm-block.git', branch = "main" }
+tvm_types = { git = 'https://github.com/tvmlabs/tvm-types.git', branch = "main" }
 
 api_info = { path = '../api/info' }
 api_derive = { path = '../api/derive' }

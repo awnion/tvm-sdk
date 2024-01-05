@@ -8,13 +8,12 @@ use crate::tests::{TestClient, HELLO};
 use super::*;
 use crate::client::NetworkMock;
 use crate::net::subscriptions::ParamsOfSubscribe;
-use crate::net::ton_gql::GraphQLQuery;
+use crate::net::tvm_gql::GraphQLQuery;
 use crate::ClientConfig;
 use serde_json::Value;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::vec;
-
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn bad_request() {
@@ -29,7 +28,7 @@ async fn bad_request() {
             "net.query",
             ParamsOfQuery {
                 query: r#"query { accounts { id }"#.to_string(),
-                variables: None
+                variables: None,
             },
         )
         .await;
@@ -42,7 +41,6 @@ async fn bad_request() {
         panic!("Error expected");
     }
 }
-
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn not_authorized_response_code() {
@@ -97,7 +95,10 @@ async fn not_authorized_response_text() {
     if let Err(err) = result {
         println!("{}", err.message);
         assert_ne!(err.message, "Unauthorized");
-        assert_ne!(err.message, "Query failed: Can not send http request: Server responded with code 401");
+        assert_ne!(
+            err.message,
+            "Query failed: Can not send http request: Server responded with code 401"
+        );
     } else {
         panic!("Error expected");
     }
@@ -178,8 +179,13 @@ async fn endpoints_with_graphql_suffix() {
         .unwrap();
 
     assert_eq!(
-        endpoint.query_url.trim_start_matches("http://").trim_start_matches("https://"),
-        format!("{}/graphql", url).trim_start_matches("http://").trim_start_matches("https://"),
+        endpoint
+            .query_url
+            .trim_start_matches("http://")
+            .trim_start_matches("https://"),
+        format!("{}/graphql", url)
+            .trim_start_matches("http://")
+            .trim_start_matches("https://"),
     );
 
     let client = TestClient::new_with_config(json!({
@@ -195,8 +201,13 @@ async fn endpoints_with_graphql_suffix() {
         .await
         .unwrap();
     assert_eq!(
-        endpoint.query_url.trim_start_matches("http://").trim_start_matches("https://"),
-        format!("{}/graphql", url).trim_start_matches("http://").trim_start_matches("https://"),
+        endpoint
+            .query_url
+            .trim_start_matches("http://")
+            .trim_start_matches("https://"),
+        format!("{}/graphql", url)
+            .trim_start_matches("http://")
+            .trim_start_matches("https://"),
     );
 }
 
@@ -277,14 +288,13 @@ fn query_sync() {
     let version = info.result["data"]["info"]["version"].as_str().unwrap();
     assert_eq!(version.split(".").count(), 3);
 
-    let result: ClientResult<ResultOfQuery> = client
-        .request(
-            "net.query",
-            ParamsOfQuery {
-                query: "query{info111{version}}".to_owned(),
-                variables: None,
-            },
-        );
+    let result: ClientResult<ResultOfQuery> = client.request(
+        "net.query",
+        ParamsOfQuery {
+            query: "query{info111{version}}".to_owned(),
+            variables: None,
+        },
+    );
 
     assert!(result.is_err());
 }
@@ -377,7 +387,7 @@ async fn ranges() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn wait_for() {
-    let now = ton_sdk::Contract::now();
+    let now = tvm_sdk::Contract::now();
     let request = tokio::spawn(async move {
         let client = TestClient::new();
         let transactions: ResultOfWaitForCollection = client
@@ -464,7 +474,7 @@ async fn message_sending_addresses() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn subscribe_for_transactions_with_addresses() {
-    let client =  TestClient::new();
+    let client = TestClient::new();
     let subscription_client = TestClient::new();
     let keys = subscription_client.generate_sign_keys();
     let deploy_params = ParamsOfEncodeMessage {
@@ -527,7 +537,7 @@ async fn subscribe_for_transactions_with_addresses() {
                 collection: "transactions".to_owned(),
                 filter: Some(json!({
                     "account_addr": { "eq": msg.address.clone() },
-                    "status": { "eq": ton_sdk::json_helper::transaction_status_to_u8(ton_block::TransactionProcessingStatus::Finalized) }
+                    "status": { "eq": tvm_sdk::json_helper::transaction_status_to_u8(tvm_block::TransactionProcessingStatus::Finalized) }
                 })),
                 result: "id account_addr status".to_owned(),
             },
@@ -586,7 +596,7 @@ async fn subscribe_for_transactions_with_addresses() {
                 collection: "transactions".to_owned(),
                 filter: Some(json!({
                     "account_addr": { "eq": msg.address.clone() },
-                    "status": { "eq": ton_sdk::json_helper::transaction_status_to_u8(ton_block::TransactionProcessingStatus::Finalized) }
+                    "status": { "eq": tvm_sdk::json_helper::transaction_status_to_u8(tvm_block::TransactionProcessingStatus::Finalized) }
                 })),
                 result: "id account_addr status".to_owned(),
             },
@@ -610,7 +620,6 @@ async fn subscribe_for_transactions_with_addresses() {
         )
         .await
         .unwrap();
-
 
     // give some time for subscription to receive all data
     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -850,12 +859,7 @@ async fn query_block_id(client: &Arc<ClientContext>) -> ClientResult<String> {
         },
     )
     .await
-    .map(|result|
-        result.result[0]["id"]
-            .as_str()
-            .unwrap()
-            .to_string()
-    )
+    .map(|result| result.result[0]["id"].as_str().unwrap().to_string())
 }
 
 async fn get_query_url(client: &Arc<ClientContext>) -> String {
@@ -964,36 +968,43 @@ async fn retry_query_on_network_errors_ws() {
         .delay(100)
         .ws_ack()
         .delay(100)
-        .ws_data(1, Value::Null, Some(vec![json!({
-            "message": "Service Unavailable",
-            "locations": [
-            {
-                "line": 2,
-                "column": 3
-            }
-            ],
-            "path": [
-            "counterparties"
-            ],
-            "extensions": {
-            "code": "INTERNAL_SERVER_ERROR",
-            "exception": {
-                "source": "graphql",
-                "code": 503
-            }
-            }
-        })]))
+        .ws_data(
+            1,
+            Value::Null,
+            Some(vec![json!({
+                "message": "Service Unavailable",
+                "locations": [
+                {
+                    "line": 2,
+                    "column": 3
+                }
+                ],
+                "path": [
+                "counterparties"
+                ],
+                "extensions": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "exception": {
+                    "source": "graphql",
+                    "code": 503
+                }
+                }
+            })]),
+        )
         .ws_reconnect()
         .delay(100)
         .ws_ack()
         .delay(100)
         .ws_blocks(1, "1")
         .delay(100)
-        .ws_error(2, json!({
-            "message":"Cannot query field \"a\" on type \"Query\".",
-            "locations":[{"line":1,"column":3}],
-            "extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}
-        }))
+        .ws_error(
+            2,
+            json!({
+                "message":"Cannot query field \"a\" on type \"Query\".",
+                "locations":[{"line":1,"column":3}],
+                "extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}
+            }),
+        )
         .reset_client(&client)
         .await;
     assert_eq!(query_block_id(&client).await.unwrap(), "1");
@@ -1033,25 +1044,29 @@ async fn retry_query_on_network_errors_ws_multiple_endpoints() {
         .delay(100)
         .ws_ack()
         .delay(100)
-        .ws_data(1, Value::Null, Some(vec![json!({
-            "message": "Service Unavailable",
-            "locations": [
-            {
-                "line": 2,
-                "column": 3
-            }
-            ],
-            "path": [
-            "counterparties"
-            ],
-            "extensions": {
-            "code": "INTERNAL_SERVER_ERROR",
-            "exception": {
-                "source": "graphql",
-                "code": 503
-            }
-            }
-        })]))
+        .ws_data(
+            1,
+            Value::Null,
+            Some(vec![json!({
+                "message": "Service Unavailable",
+                "locations": [
+                {
+                    "line": 2,
+                    "column": 3
+                }
+                ],
+                "path": [
+                "counterparties"
+                ],
+                "extensions": {
+                "code": "INTERNAL_SERVER_ERROR",
+                "exception": {
+                    "source": "graphql",
+                    "code": 503
+                }
+                }
+            })]),
+        )
         .ws_reconnect()
         .url("a")
         .info(now, 100)
@@ -1063,11 +1078,14 @@ async fn retry_query_on_network_errors_ws_multiple_endpoints() {
         .delay(100)
         .ws_blocks(1, "1")
         .delay(100)
-        .ws_error(2, json!({
-            "message":"Cannot query field \"a\" on type \"Query\".",
-            "locations":[{"line":1,"column":3}],
-            "extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}
-        }))
+        .ws_error(
+            2,
+            json!({
+                "message":"Cannot query field \"a\" on type \"Query\".",
+                "locations":[{"line":1,"column":3}],
+                "extensions":{"code":"GRAPHQL_VALIDATION_FAILED"}
+            }),
+        )
         .reset_client(&client)
         .await;
     assert_eq!(query_block_id(&client).await.unwrap(), "1");
@@ -1352,7 +1370,6 @@ async fn transaction_tree() {
         )
         .await;
 
-
     let run_result = client
         .net_process_function(
             address,
@@ -1373,7 +1390,10 @@ async fn transaction_tree() {
         .request_async(
             "net.query_transaction_tree",
             ParamsOfQueryTransactionTree {
-                in_msg: run_result.transaction["in_msg"].as_str().unwrap().to_string(),
+                in_msg: run_result.transaction["in_msg"]
+                    .as_str()
+                    .unwrap()
+                    .to_string(),
                 abi_registry: Some(abi_registry.clone()),
                 transaction_max_count: Some(0),
                 ..Default::default()
@@ -1454,10 +1474,10 @@ async fn transaction_tree() {
                 transaction_max_count: Some(2),
                 timeout: Some(0),
                 ..Default::default()
-        },
-    )
-    .await
-    .unwrap();
+            },
+        )
+        .await
+        .unwrap();
 
     assert_eq!(result.transactions.len(), 2);
 }
@@ -1569,7 +1589,10 @@ async fn low_level_subscribe() {
             }
         }
         .unwrap();
-        let id = result.result["messages"]["id"].as_str().unwrap().to_string();
+        let id = result.result["messages"]["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
         let messages_copy = messages_copy.clone();
         async move {
             messages_copy.lock().await.push(id);

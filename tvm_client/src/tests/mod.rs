@@ -63,11 +63,11 @@ mod env {
     }
 
     pub(crate) fn giver_address() -> Option<String> {
-        str("EVERCLOUD_GIVER_ADDRESS", Some("TON_GIVER_ADDRESS"))
+        str("EVERCLOUD_GIVER_ADDRESS", Some("tvm_GIVER_ADDRESS"))
     }
 
     pub(crate) fn giver_secret() -> Option<String> {
-        str("EVERCLOUD_GIVER_SECRET", Some("TON_GIVER_SECRET"))
+        str("EVERCLOUD_GIVER_SECRET", Some("tvm_GIVER_SECRET"))
     }
 
     pub(crate) fn giver_type() -> String {
@@ -79,16 +79,16 @@ mod env {
     }
 
     pub(crate) fn endpoints() -> String {
-        str("EVERCLOUD_ENDPOINTS", Some("TON_NETWORK_ADDRESS"))
+        str("EVERCLOUD_ENDPOINTS", Some("tvm_NETWORK_ADDRESS"))
             .unwrap_or_else(|| "http://localhost".into())
     }
 
     pub(crate) fn queries_protocol() -> String {
-        str("EVERCLOUD_QUERIES_PROTOCOL", Some("TON_QUERIES_PROTOCOL")).unwrap_or_else(|| "".into())
+        str("EVERCLOUD_QUERIES_PROTOCOL", Some("tvm_QUERIES_PROTOCOL")).unwrap_or_else(|| "".into())
     }
 
     pub(crate) fn node_se() -> String {
-        str("EVERCLOUD_NODE_SE", Some("TON_USE_SE")).unwrap_or_else(|| "true".into())
+        str("EVERCLOUD_NODE_SE", Some("tvm_USE_SE")).unwrap_or_else(|| "true".into())
     }
 
     pub(crate) fn abi_version() -> String {

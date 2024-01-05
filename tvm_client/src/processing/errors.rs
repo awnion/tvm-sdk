@@ -12,9 +12,9 @@
  *
  */
 
-use crate::error::{ClientError, format_time};
+use crate::error::{format_time, ClientError};
 use serde_json::Value;
-use ton_block::MsgAddressInt;
+use tvm_block::MsgAddressInt;
 
 #[derive(ApiType)]
 pub enum ErrorCode {
@@ -78,7 +78,7 @@ impl Error {
             "message_id": message_id,
         });
         if let Some(shard_block_id) = shard_block_id {
-            data["shard_block_id"] = shard_block_id.clone().into();
+            data["shard_block_id"] = shard_block_id.into();
         }
         error_with_data(code, message, data)
     }
@@ -227,10 +227,16 @@ impl Error {
     }
 
     pub fn invalid_remp_status<E: std::fmt::Display>(err: E) -> ClientError {
-        error(ErrorCode::InvalidRempStatus, format!("Invalid REMP status: {}", err))
+        error(
+            ErrorCode::InvalidRempStatus,
+            format!("Invalid REMP status: {}", err),
+        )
     }
 
     pub fn next_remp_status_timeout() -> ClientError {
-        error(ErrorCode::NextRempStatusTimeout, format!("Next REMP status awaiting timeout"))
+        error(
+            ErrorCode::NextRempStatusTimeout,
+            format!("Next REMP status awaiting timeout"),
+        )
     }
 }

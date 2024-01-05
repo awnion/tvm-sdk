@@ -25,7 +25,7 @@ use std::iter::FromIterator;
 #[allow(unused_imports)]
 use std::str::FromStr;
 use std::sync::{Arc, Mutex, RwLock};
-use ton_types::{Cell, UInt256};
+use tvm_types::{Cell, UInt256};
 
 pub const SHA256_SIZE: usize = 32;
 pub const DEPTH_SIZE: usize = 2;
@@ -380,10 +380,7 @@ pub struct ParamsOfBocCacheUnpin {
 /// Decrease pin reference counter for BOCs with specified pin defined in the `cache_set`.
 /// BOCs which have only 1 pin and its reference counter become 0 will be removed from cache
 #[api_function]
-pub fn cache_unpin(
-    context: Arc<ClientContext>,
-    params: ParamsOfBocCacheUnpin,
-) -> ClientResult<()> {
+pub fn cache_unpin(context: Arc<ClientContext>, params: ParamsOfBocCacheUnpin) -> ClientResult<()> {
     let hash = params
         .boc_ref
         .map(|string| parse_boc_ref(&string))
@@ -403,12 +400,18 @@ impl CachedBoc {
     pub fn new(context: Arc<ClientContext>, boc: String, pin: String) -> ClientResult<Self> {
         let boc_ref = cache_set(
             context.clone(),
-            ParamsOfBocCacheSet { 
+            ParamsOfBocCacheSet {
                 boc,
                 cache_type: BocCacheType::Pinned { pin: pin.clone() },
-        })?.boc_ref;
-        
-        Ok(Self { context, boc_ref, pin })
+            },
+        )?
+        .boc_ref;
+
+        Ok(Self {
+            context,
+            boc_ref,
+            pin,
+        })
     }
 
     pub fn boc_ref(&self) -> String {
@@ -424,10 +427,10 @@ impl Drop for CachedBoc {
     fn drop(&mut self) {
         let _ = cache_unpin(
             self.context.clone(),
-            ParamsOfBocCacheUnpin { 
+            ParamsOfBocCacheUnpin {
                 pin: std::mem::take(&mut self.pin),
-                boc_ref: Some(std::mem::take(&mut self.boc_ref))
-            }
+                boc_ref: Some(std::mem::take(&mut self.boc_ref)),
+            },
         );
     }
 }

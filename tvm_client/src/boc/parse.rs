@@ -16,7 +16,7 @@ use crate::boc::Error;
 use crate::client::ClientContext;
 use crate::error::ClientResult;
 use serde_json::Value;
-use ton_block::Deserializable;
+use tvm_block::Deserializable;
 
 use super::internal::{deserialize_cell_from_boc, deserialize_object_from_cell};
 
@@ -50,24 +50,25 @@ pub fn parse_message(
     context: std::sync::Arc<ClientContext>,
     params: ParamsOfParse,
 ) -> ClientResult<ResultOfParse> {
-    let object = deserialize_object_from_boc::<ton_block::Message>(&context, &params.boc, "message")?;
+    let object =
+        deserialize_object_from_boc::<tvm_block::Message>(&context, &params.boc, "message")?;
 
-    let set = ton_block_json::MessageSerializationSet {
+    let set = tvm_block_json::MessageSerializationSet {
         block_id: None,
         boc: object.boc.bytes("message")?,
         id: object.cell.repr_hash(),
         message: object.object,
         proof: None,
-        status: ton_block::MessageProcessingStatus::Finalized,
+        status: tvm_block::MessageProcessingStatus::Finalized,
         transaction_id: None,
         transaction_now: None,
         ..Default::default()
     };
 
-    let parsed = ton_block_json::db_serialize_message_ex(
+    let parsed = tvm_block_json::db_serialize_message_ex(
         "id",
         &set,
-        ton_block_json::SerializationMode::QServer,
+        tvm_block_json::SerializationMode::QServer,
     )
     .map_err(|err| Error::serialization_error(err, "message"))?;
 
@@ -84,23 +85,26 @@ pub fn parse_transaction(
     context: std::sync::Arc<ClientContext>,
     params: ParamsOfParse,
 ) -> ClientResult<ResultOfParse> {
-    let object =
-        deserialize_object_from_boc::<ton_block::Transaction>(&context, &params.boc, "transaction")?;
+    let object = deserialize_object_from_boc::<tvm_block::Transaction>(
+        &context,
+        &params.boc,
+        "transaction",
+    )?;
 
-    let set = ton_block_json::TransactionSerializationSetEx {
+    let set = tvm_block_json::TransactionSerializationSetEx {
         block_id: None,
         boc: &object.boc.bytes("transaction")?,
         id: &object.cell.repr_hash(),
         transaction: &object.object,
         proof: None,
-        status: ton_block::TransactionProcessingStatus::Finalized,
-        workchain_id: None
+        status: tvm_block::TransactionProcessingStatus::Finalized,
+        workchain_id: None,
     };
 
-    let parsed = ton_block_json::db_serialize_transaction_ex(
+    let parsed = tvm_block_json::db_serialize_transaction_ex(
         "id",
         set,
-        ton_block_json::SerializationMode::QServer,
+        tvm_block_json::SerializationMode::QServer,
     )
     .map_err(|err| Error::serialization_error(err, "transaction"))?;
 
@@ -119,26 +123,34 @@ pub fn parse_account(
 ) -> ClientResult<ResultOfParse> {
     let (boc, cell) = deserialize_cell_from_boc(&context, &params.boc, "account")?;
 
-    let account = if cell.cell_type() == ton_types::CellType::MerkleProof {
-        let proof = ton_block::MerkleProof::construct_from_cell(cell)
-            .map_err(|err| Error::invalid_boc(format!("Can not deserialize Merkle proof from pruned account BOC: {}", err)))?;
-        proof.virtualize()
-            .map_err(|err| Error::invalid_boc(format!("Can not virtualize pruned account from Merkle proof: {}", err)))?
+    let account = if cell.cell_type() == tvm_types::CellType::MerkleProof {
+        let proof = tvm_block::MerkleProof::construct_from_cell(cell).map_err(|err| {
+            Error::invalid_boc(format!(
+                "Can not deserialize Merkle proof from pruned account BOC: {}",
+                err
+            ))
+        })?;
+        proof.virtualize().map_err(|err| {
+            Error::invalid_boc(format!(
+                "Can not virtualize pruned account from Merkle proof: {}",
+                err
+            ))
+        })?
     } else {
         deserialize_object_from_cell(cell, "account")?
     };
 
-    let set = ton_block_json::AccountSerializationSet {
+    let set = tvm_block_json::AccountSerializationSet {
         boc: boc.bytes("account")?,
         proof: None,
         account,
         ..Default::default()
     };
 
-    let parsed = ton_block_json::db_serialize_account_ex(
+    let parsed = tvm_block_json::db_serialize_account_ex(
         "id",
         &set,
-        ton_block_json::SerializationMode::QServer,
+        tvm_block_json::SerializationMode::QServer,
     )
     .map_err(|err| Error::serialization_error(err, "account"))?;
 
@@ -155,20 +167,20 @@ pub fn parse_block(
     context: std::sync::Arc<ClientContext>,
     params: ParamsOfParse,
 ) -> ClientResult<ResultOfParse> {
-    let object = deserialize_object_from_boc::<ton_block::Block>(&context, &params.boc, "block")?;
+    let object = deserialize_object_from_boc::<tvm_block::Block>(&context, &params.boc, "block")?;
 
-    let set = ton_block_json::BlockSerializationSet {
+    let set = tvm_block_json::BlockSerializationSet {
         boc: object.boc.bytes("block")?,
         id: object.cell.repr_hash(),
         block: object.object,
-        status: ton_block::BlockProcessingStatus::Finalized,
+        status: tvm_block::BlockProcessingStatus::Finalized,
         ..Default::default()
     };
 
-    let parsed = ton_block_json::db_serialize_block_ex(
+    let parsed = tvm_block_json::db_serialize_block_ex(
         "id",
         &set,
-        ton_block_json::SerializationMode::QServer,
+        tvm_block_json::SerializationMode::QServer,
     )
     .map_err(|err| Error::serialization_error(err, "block"))?;
 
@@ -185,10 +197,13 @@ pub fn parse_shardstate(
     context: std::sync::Arc<ClientContext>,
     params: ParamsOfParseShardstate,
 ) -> ClientResult<ResultOfParse> {
-    let object =
-        deserialize_object_from_boc::<ton_block::ShardStateUnsplit>(&context, &params.boc, "shardstate")?;
+    let object = deserialize_object_from_boc::<tvm_block::ShardStateUnsplit>(
+        &context,
+        &params.boc,
+        "shardstate",
+    )?;
 
-    let set = ton_block_json::ShardStateSerializationSet {
+    let set = tvm_block_json::ShardStateSerializationSet {
         boc: object.boc.bytes("shardstate")?,
         id: params.id,
         state: object.object,
@@ -197,10 +212,10 @@ pub fn parse_shardstate(
         ..Default::default()
     };
 
-    let parsed = ton_block_json::db_serialize_shard_state_ex(
+    let parsed = tvm_block_json::db_serialize_shard_state_ex(
         "id",
         &set,
-        ton_block_json::SerializationMode::QServer,
+        tvm_block_json::SerializationMode::QServer,
     )
     .map_err(|err| Error::serialization_error(err, "shardstate"))?;
 

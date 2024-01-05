@@ -13,7 +13,7 @@
 
 use crate::client::ClientContext;
 use crate::crypto;
-use crate::crypto::internal::{decode_public_key, decode_secret_key, sign_using_keys, ton_crc16};
+use crate::crypto::internal::{decode_public_key, decode_secret_key, sign_using_keys, tvm_crc16};
 use crate::encoding::{base64_decode, hex_decode};
 use crate::error::ClientResult;
 use base64::URL_SAFE;
@@ -56,7 +56,8 @@ impl KeyPair {
 
         if secret.verifying_key() != public {
             return Err(super::Error::invalid_public_key(
-                "public key doesn't correspond to secret key", &self.public
+                "public key doesn't correspond to secret key",
+                &self.public,
             ));
         }
 
@@ -75,7 +76,7 @@ impl Debug for KeyPair {
     }
 }
 
-//----------------------------------------------------------- convert_public_key_to_ton_safe_format
+//----------------------------------------------------------- convert_public_key_to_tvm_safe_format
 ///
 #[derive(Serialize, Deserialize, ApiType, Default)]
 pub struct ParamsOfConvertPublicKeyToTonSafeFormat {
@@ -86,25 +87,25 @@ pub struct ParamsOfConvertPublicKeyToTonSafeFormat {
 #[derive(Serialize, Deserialize, ApiType, Default)]
 pub struct ResultOfConvertPublicKeyToTonSafeFormat {
     /// Public key represented in TON safe format.
-    pub ton_public_key: String,
+    pub tvm_public_key: String,
 }
 
 /// Converts public key to ton safe_format
 #[api_function]
-pub fn convert_public_key_to_ton_safe_format(
+pub fn convert_public_key_to_tvm_safe_format(
     _context: std::sync::Arc<ClientContext>,
     params: ParamsOfConvertPublicKeyToTonSafeFormat,
 ) -> ClientResult<ResultOfConvertPublicKeyToTonSafeFormat> {
     let public_key = hex_decode(&params.public_key)?;
-    let mut ton_public_key: Vec<u8> = Vec::new();
-    ton_public_key.push(0x3e);
-    ton_public_key.push(0xe6);
-    ton_public_key.extend_from_slice(&public_key);
-    let hash = ton_crc16(&ton_public_key);
-    ton_public_key.push((hash >> 8) as u8);
-    ton_public_key.push((hash & 255) as u8);
+    let mut tvm_public_key: Vec<u8> = Vec::new();
+    tvm_public_key.push(0x3e);
+    tvm_public_key.push(0xe6);
+    tvm_public_key.extend_from_slice(&public_key);
+    let hash = tvm_crc16(&tvm_public_key);
+    tvm_public_key.push((hash >> 8) as u8);
+    tvm_public_key.push((hash & 255) as u8);
     Ok(ResultOfConvertPublicKeyToTonSafeFormat {
-        ton_public_key: base64::encode_config(&ton_public_key, URL_SAFE),
+        tvm_public_key: base64::encode_config(&tvm_public_key, URL_SAFE),
     })
 }
 

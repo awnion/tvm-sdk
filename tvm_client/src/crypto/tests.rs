@@ -1,4 +1,3 @@
-use std::convert::TryInto;
 use super::*;
 use crate::client::ParamsOfAppRequest;
 use crate::crypto::boxes::crypto_box::{
@@ -43,6 +42,7 @@ use crate::json_interface::crypto::{
     ResultOfAppSigningBox,
 };
 use crate::tests::TestClient;
+use std::convert::TryInto;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -114,7 +114,7 @@ fn math() {
 
     let result: ResultOfTonCrc16 = client
         .request(
-            "crypto.ton_crc16",
+            "crypto.tvm_crc16",
             ParamsOfTonCrc16 {
                 data: base64_from_hex("0123456789abcdef"),
             },
@@ -206,7 +206,7 @@ fn keys() {
 
     let result: ResultOfConvertPublicKeyToTonSafeFormat = client
         .request(
-            "crypto.convert_public_key_to_ton_safe_format",
+            "crypto.convert_public_key_to_tvm_safe_format",
             ParamsOfConvertPublicKeyToTonSafeFormat {
                 public_key: "06117f59ade83e097e0fb33e5d29e8735bda82b3bf78a015542aaa853bb69600"
                     .into(),
@@ -215,7 +215,7 @@ fn keys() {
         .unwrap();
     assert_eq!(
         "PuYGEX9Zreg-CX4Psz5dKehzW9qCs794oBVUKqqFO7aWAOTD",
-        result.ton_public_key
+        result.tvm_public_key
     );
 
     let result: KeyPair = client
@@ -530,14 +530,14 @@ fn mnemonic() {
     }).unwrap();
     let result: ResultOfConvertPublicKeyToTonSafeFormat = client
         .request(
-            "crypto.convert_public_key_to_ton_safe_format",
+            "crypto.convert_public_key_to_tvm_safe_format",
             ParamsOfConvertPublicKeyToTonSafeFormat {
                 public_key: result.public.clone(),
             },
         )
         .unwrap();
     assert_eq!(
-        result.ton_public_key,
+        result.tvm_public_key,
         "PuYTvCuf__YXhp-4jv3TXTHL0iK65ImwxG0RGrYc1sP3H4KS"
     );
 
@@ -549,14 +549,14 @@ fn mnemonic() {
     }).unwrap();
     let result: ResultOfConvertPublicKeyToTonSafeFormat = client
         .request(
-            "crypto.convert_public_key_to_ton_safe_format",
+            "crypto.convert_public_key_to_tvm_safe_format",
             ParamsOfConvertPublicKeyToTonSafeFormat {
                 public_key: result.public.clone(),
             },
         )
         .unwrap();
     assert_eq!(
-        result.ton_public_key,
+        result.tvm_public_key,
         "PubDdJkMyss2qHywFuVP1vzww0TpsLxnRNnbifTCcu-XEgW0"
     );
 
@@ -573,14 +573,14 @@ fn mnemonic() {
     ).unwrap();
     let result: ResultOfConvertPublicKeyToTonSafeFormat = client
         .request(
-            "crypto.convert_public_key_to_ton_safe_format",
+            "crypto.convert_public_key_to_tvm_safe_format",
             ParamsOfConvertPublicKeyToTonSafeFormat {
                 public_key: result.public.clone(),
             },
         )
         .unwrap();
     assert_eq!(
-        result.ton_public_key,
+        result.tvm_public_key,
         "PuZhw8W5ejPJwKA68RL7sn4_RNmeH4BIU_mEK7em5d4_-cIx"
     );
 
@@ -641,14 +641,14 @@ fn mnemonic() {
         .unwrap();
     let result: ResultOfConvertPublicKeyToTonSafeFormat = client
         .request(
-            "crypto.convert_public_key_to_ton_safe_format",
+            "crypto.convert_public_key_to_tvm_safe_format",
             ParamsOfConvertPublicKeyToTonSafeFormat {
                 public_key: result.public.clone(),
             },
         )
         .unwrap();
     assert_eq!(
-        result.ton_public_key,
+        result.tvm_public_key,
         "PuZdw_KyXIzo8IksTrERN3_WoAoYTyK7OvM-yaLk711sUIB3"
     );
 }
@@ -1237,8 +1237,7 @@ fn password_provider(
                 encryption_public_key,
             } = serde_json::from_value(request.request_data).unwrap();
 
-            let keypair: KeyPair =
-                client.request_no_params("crypto.nacl_box_keypair").unwrap();
+            let keypair: KeyPair = client.request_no_params("crypto.nacl_box_keypair").unwrap();
 
             let ResultOfNaclBox { encrypted } = client
                 .request_async(
@@ -1268,7 +1267,7 @@ fn password_provider(
 }
 
 #[tokio::test]
-async fn test_crypto_boxes() -> ton_types::Result<()> {
+async fn test_crypto_boxes() -> tvm_types::Result<()> {
     let client = Arc::new(TestClient::new());
     let password_hash =
         Arc::new("1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF".to_string());
@@ -1362,7 +1361,7 @@ async fn test_crypto_boxes() -> ton_types::Result<()> {
 }
 
 #[tokio::test]
-async fn test_crypto_box_signing_boxes() -> ton_types::Result<()> {
+async fn test_crypto_box_signing_boxes() -> tvm_types::Result<()> {
     let client = Arc::new(TestClient::new());
     let password_hash =
         Arc::new("1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF".to_string());
@@ -1480,7 +1479,7 @@ async fn test_crypto_box_signing_boxes() -> ton_types::Result<()> {
 }
 
 #[tokio::test]
-async fn test_crypto_box_encryption_boxes() -> ton_types::Result<()> {
+async fn test_crypto_box_encryption_boxes() -> tvm_types::Result<()> {
     let client = Arc::new(TestClient::new());
     let password_hash =
         Arc::new("1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF".to_string());
@@ -1616,7 +1615,7 @@ async fn test_crypto_box_encryption_boxes() -> ton_types::Result<()> {
 }
 
 #[tokio::test]
-async fn test_crypto_box_derive_key_cache() -> ton_types::Result<()> {
+async fn test_crypto_box_derive_key_cache() -> tvm_types::Result<()> {
     let client = Arc::new(TestClient::new());
     let password_hash =
         Arc::new("1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF".to_string());

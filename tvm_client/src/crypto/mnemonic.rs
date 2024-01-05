@@ -28,7 +28,6 @@ use sha2::Sha512;
 use std::convert::TryFrom;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
-
 #[derive(Copy, Clone, Debug, Deserialize_repr, Serialize_repr, Zeroize, PartialEq, ApiType)]
 #[repr(u8)]
 pub enum MnemonicDictionary {
@@ -298,7 +297,9 @@ impl Bip39Mnemonic {
     }
 }
 
-pub(crate) fn ed25519_keys_from_secret_bytes(bytes: &ed25519_dalek::SecretKey) -> ClientResult<KeyPair> {
+pub(crate) fn ed25519_keys_from_secret_bytes(
+    bytes: &ed25519_dalek::SecretKey,
+) -> ClientResult<KeyPair> {
     let secret = SigningKey::from_bytes(bytes);
     Ok(KeyPair::new(
         hex::encode(secret.verifying_key().as_bytes()),
@@ -390,7 +391,7 @@ impl TonMnemonic {
                     word_i |= 1 << j;
                 }
             }
-            words.push(TON_WORDS[word_i]);
+            words.push(TVM_WORDS[word_i]);
         }
         words
     }
@@ -412,7 +413,7 @@ impl TonMnemonic {
     fn internal_is_phrase_valid(&self, phrase: &String) -> bool {
         let mut count = 0u8;
         for word in phrase.split(" ") {
-            if !TON_WORDS.contains(&word) {
+            if !TVM_WORDS.contains(&word) {
                 return false;
             }
             count += 1;
@@ -423,7 +424,7 @@ impl TonMnemonic {
 
 impl CryptoMnemonic for TonMnemonic {
     fn get_words(&self) -> ClientResult<String> {
-        return Ok(TON_WORDS.join(" ").to_string());
+        return Ok(TVM_WORDS.join(" ").to_string());
     }
 
     fn generate_random_phrase(&self) -> ClientResult<String> {
@@ -490,7 +491,7 @@ impl CryptoMnemonic for TonMnemonic {
     }
 }
 
-const TON_WORDS: [&str; 2048] = [
+const TVM_WORDS: [&str; 2048] = [
     "abandon", "ability", "able", "about", "above", "absent", "absorb", "abstract", "absurd",
     "abuse", "access", "accident", "account", "accuse", "achieve", "acid", "acoustic", "acquire",
     "across", "act", "action", "actor", "actress", "actual", "adapt", "add", "addict", "address",

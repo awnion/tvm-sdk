@@ -194,7 +194,7 @@ fn gcd(mut a: u64, mut b: u64) -> u64 {
     }
 }
 
-//------------------------------------------------------------------- ton_crc16
+//------------------------------------------------------------------- tvm_crc16
 
 #[derive(Serialize, Deserialize, ApiType, Default)]
 pub struct ParamsOfTonCrc16 {
@@ -210,12 +210,12 @@ pub struct ResultOfTonCrc16 {
 
 /// Calculates CRC16 using TON algorithm.
 #[api_function]
-pub fn ton_crc16(
+pub fn tvm_crc16(
     _context: std::sync::Arc<ClientContext>,
     params: ParamsOfTonCrc16,
 ) -> ClientResult<ResultOfTonCrc16> {
     Ok(ResultOfTonCrc16 {
-        crc: crypto::internal::ton_crc16(&(base64_decode(&params.data)?)),
+        crc: crypto::internal::tvm_crc16(&(base64_decode(&params.data)?)),
     })
 }
 

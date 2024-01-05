@@ -20,9 +20,9 @@ use crate::boc::internal::{
 };
 use crate::error::ClientResult;
 use crate::ClientContext;
-use ever_struct::scheme::TVC;
-use ton_block::{StateInit, Deserializable};
-use ton_types::Cell;
+use tvm_block::{Deserializable, StateInit};
+use tvm_struct::scheme::TVC;
+use tvm_types::Cell;
 
 #[derive(Serialize, Deserialize, ApiType, Default)]
 pub struct ParamsOfDecodeTvc {

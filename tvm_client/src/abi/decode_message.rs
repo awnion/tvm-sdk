@@ -1,15 +1,15 @@
-use crate::encoding::{decode_abi_number, slice_from_cell};
-use crate::{abi::types::Abi, boc::internal::deserialize_cell_from_boc};
 use crate::abi::{Error, FunctionHeader};
 use crate::boc::internal::deserialize_object_from_boc;
 use crate::client::ClientContext;
+use crate::encoding::{decode_abi_number, slice_from_cell};
 use crate::error::ClientResult;
+use crate::{abi::types::Abi, boc::internal::deserialize_cell_from_boc};
 use serde_json::Value;
 use std::sync::Arc;
-use ton_abi::contract::DecodedMessage;
-use ton_abi::token::Detokenizer;
-use ton_sdk::{AbiContract, AbiFunction, AbiEvent};
-use ton_types::SliceData;
+use tvm_abi::contract::DecodedMessage;
+use tvm_abi::token::Detokenizer;
+use tvm_sdk::{AbiContract, AbiEvent, AbiFunction};
+use tvm_types::SliceData;
 
 use super::types::extend_data_to_sign;
 
@@ -69,7 +69,7 @@ impl DecodedMessageBody {
         body_type: MessageBodyType,
         decoded: DecodedMessage,
         header: Option<FunctionHeader>,
-    ) -> ton_types::Result<Self> {
+    ) -> tvm_types::Result<Self> {
         let value = Detokenizer::detokenize_to_json_value(&decoded.tokens)?;
         Ok(Self {
             body_type,
@@ -115,11 +115,18 @@ pub fn decode_message(
     let (abi, message) = prepare_decode(&context, &params)?;
     if let Some(body) = message.body() {
         let data_layout = match message.header() {
-            ton_block::CommonMsgInfo::ExtInMsgInfo(_) => Some(DataLayout::Input),
-            ton_block::CommonMsgInfo::ExtOutMsgInfo(_) => Some(DataLayout::Output),
-            ton_block::CommonMsgInfo::IntMsgInfo(_) => params.data_layout,
+            tvm_block::CommonMsgInfo::ExtInMsgInfo(_) => Some(DataLayout::Input),
+            tvm_block::CommonMsgInfo::ExtOutMsgInfo(_) => Some(DataLayout::Output),
+            tvm_block::CommonMsgInfo::IntMsgInfo(_) => params.data_layout,
         };
-        decode_body(abi, body, message.is_internal(), params.allow_partial, params.function_name, data_layout)
+        decode_body(
+            abi,
+            body,
+            message.is_internal(),
+            params.allow_partial,
+            params.function_name,
+            data_layout,
+        )
     } else {
         Err(Error::invalid_message_for_decode(
             "The message body is empty",
@@ -151,7 +158,7 @@ pub struct ParamsOfDecodeMessageBody {
     pub function_name: Option<String>,
 
     // By default SDK tries to decode as output and then if decode is not successfull - tries as input.
-	// If explicitly specified then tries only the specified layout.
+    // If explicitly specified then tries only the specified layout.
     pub data_layout: Option<DataLayout>,
 }
 
@@ -164,13 +171,20 @@ pub fn decode_message_body(
     let abi = params.abi.abi()?;
     let (_, body) = deserialize_cell_from_boc(&context, &params.body, "message body")?;
     let body = slice_from_cell(body)?;
-    decode_body(abi, body, params.is_internal, params.allow_partial, params.function_name, params.data_layout)
+    decode_body(
+        abi,
+        body,
+        params.is_internal,
+        params.allow_partial,
+        params.function_name,
+        params.data_layout,
+    )
 }
 
 fn prepare_decode(
     context: &ClientContext,
     params: &ParamsOfDecodeMessage,
-) -> ClientResult<(AbiContract, ton_block::Message)> {
+) -> ClientResult<(AbiContract, tvm_block::Message)> {
     let abi = params.abi.abi()?;
     let message = deserialize_object_from_boc(context, &params.message, "message")
         .map_err(|x| Error::invalid_message_for_decode(x))?;
@@ -203,7 +217,8 @@ fn decode_unknown_function(
     data_layout: Option<DataLayout>,
 ) -> ClientResult<DecodedMessageBody> {
     let decode_output = || {
-        let output = abi.decode_output(body.clone(), is_internal, allow_partial)
+        let output = abi
+            .decode_output(body.clone(), is_internal, allow_partial)
             .map_err(|err| Error::invalid_message_for_decode(err))?;
         if abi.events().get(&output.function_name).is_some() {
             DecodedMessageBody::new(MessageBodyType::Event, output, None)
@@ -212,16 +227,18 @@ fn decode_unknown_function(
         }
     };
     let decode_input = || {
-        let input = abi.decode_input(body.clone(), is_internal, allow_partial)
+        let input = abi
+            .decode_input(body.clone(), is_internal, allow_partial)
             .map_err(|err| Error::invalid_message_for_decode(err))?;
-        let (header, _, _) =
-            ton_abi::Function::decode_header(abi.version(), body.clone(), abi.header(), is_internal)
-                .map_err(|err| {
-                    Error::invalid_message_for_decode(format!(
-                        "Can't decode function header: {}",
-                        err
-                    ))
-                })?;
+        let (header, _, _) = tvm_abi::Function::decode_header(
+            abi.version(),
+            body.clone(),
+            abi.header(),
+            is_internal,
+        )
+        .map_err(|err| {
+            Error::invalid_message_for_decode(format!("Can't decode function header: {}", err))
+        })?;
         DecodedMessageBody::new(
             MessageBodyType::Input,
             input,
@@ -231,11 +248,9 @@ fn decode_unknown_function(
     match data_layout {
         Some(DataLayout::Input) => decode_input(),
         Some(DataLayout::Output) => decode_output(),
-        None => {
-            decode_output()
-                .or_else(|_| decode_input())
-                .or_else(|_| Err(Error::invalid_message_for_decode(ERROR_TIP)))
-        }
+        None => decode_output()
+            .or_else(|_| decode_input())
+            .or_else(|_| Err(Error::invalid_message_for_decode(ERROR_TIP))),
     }
 }
 
@@ -251,7 +266,8 @@ fn decode_with_function(
     match variant {
         AbiFunctionVariant::Function(function) => {
             let decode_output = || {
-                let decoded = function.decode_output(body.clone(), is_internal, allow_partial)
+                let decoded = function
+                    .decode_output(body.clone(), is_internal, allow_partial)
                     .map_err(|err| Error::invalid_message_for_decode(err))?;
                 DecodedMessageBody::new(
                     MessageBodyType::Output,
@@ -259,15 +275,20 @@ fn decode_with_function(
                         function_name: function_name.clone(),
                         tokens: decoded,
                     },
-                    None
+                    None,
                 )
             };
             let decode_input = || {
-                let decoded = function.decode_input(body.clone(), is_internal, allow_partial)
+                let decoded = function
+                    .decode_input(body.clone(), is_internal, allow_partial)
                     .map_err(|err| Error::invalid_message_for_decode(err))?;
-                let (header, _, _) =
-                    ton_abi::Function::decode_header(abi.version(), body.clone(), abi.header(), is_internal)
-                        .map_err(|err| Error::invalid_message_for_decode(err))?;
+                let (header, _, _) = tvm_abi::Function::decode_header(
+                    abi.version(),
+                    body.clone(),
+                    abi.header(),
+                    is_internal,
+                )
+                .map_err(|err| Error::invalid_message_for_decode(err))?;
                 DecodedMessageBody::new(
                     MessageBodyType::Input,
                     DecodedMessage {
@@ -281,16 +302,16 @@ fn decode_with_function(
             match data_layout {
                 Some(DataLayout::Input) => decode_input(),
                 Some(DataLayout::Output) => decode_output(),
-                None => {
-                    decode_output()
-                        .or_else(|_| decode_input())
-                        .or_else(|_| Err(Error::invalid_message_for_decode(ERROR_TIP)))
-                }
+                None => decode_output()
+                    .or_else(|_| decode_input())
+                    .or_else(|_| Err(Error::invalid_message_for_decode(ERROR_TIP))),
             }
-        },
+        }
         AbiFunctionVariant::Event(event) => {
             if is_internal {
-                return Err(Error::invalid_message_for_decode("ABI event can be produced only in external outbound message"));
+                return Err(Error::invalid_message_for_decode(
+                    "ABI event can be produced only in external outbound message",
+                ));
             }
             let decoded = event
                 .decode_input(body, allow_partial)
@@ -316,7 +337,8 @@ fn find_abi_function<'a>(abi: &'a AbiContract, name: &str) -> ClientResult<AbiFu
         Ok(AbiFunctionVariant::Event(event))
     } else {
         let function_id: u32 = decode_abi_number(name)?;
-        if let Ok(function) = abi.function_by_id(function_id, true)
+        if let Ok(function) = abi
+            .function_by_id(function_id, true)
             .or_else(|_| abi.function_by_id(function_id, true))
         {
             Ok(AbiFunctionVariant::Function(function))
@@ -357,13 +379,14 @@ pub async fn get_signature_data(
     params: ParamsOfGetSignatureData,
 ) -> ClientResult<ResultOfGetSignatureData> {
     let abi = params.abi.abi()?;
-    let message: ton_block::Message = deserialize_object_from_boc(&context, &params.message, "message")?.object;
+    let message: tvm_block::Message =
+        deserialize_object_from_boc(&context, &params.message, "message")?.object;
     if let Some(body) = message.body() {
-        let address = message.dst()
-            .ok_or_else(|| Error::invalid_message_for_decode(
-                "Message has no destination address",
-            ))?;
-        let (signature, hash) = abi.get_signature_data(body, Some(address))
+        let address = message.dst().ok_or_else(|| {
+            Error::invalid_message_for_decode("Message has no destination address")
+        })?;
+        let (signature, hash) = abi
+            .get_signature_data(body, Some(address))
             .map_err(|err| Error::invalid_message_for_decode(err))?;
         let unsigned = extend_data_to_sign(&context, params.signature_id, Some(hash)).await?;
         Ok(ResultOfGetSignatureData {

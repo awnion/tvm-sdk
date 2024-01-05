@@ -17,11 +17,11 @@ use crate::types::grams_to_u64;
 use crate::types::StringId;
 use crate::{Message, MessageId};
 
-use ton_block::{
-    AccStatusChange, ComputeSkipReason, GetRepresentationHash, TrComputePhase,
-    TransactionDescr, TransactionProcessingStatus,
+use tvm_block::{
+    AccStatusChange, ComputeSkipReason, GetRepresentationHash, TrComputePhase, TransactionDescr,
+    TransactionProcessingStatus,
 };
-use ton_types::Result;
+use tvm_types::Result;
 
 use std::convert::TryFrom;
 
@@ -81,9 +81,9 @@ pub struct Transaction {
     pub total_fees: u64,
 }
 
-impl TryFrom<&ton_block::Transaction> for Transaction {
+impl TryFrom<&tvm_block::Transaction> for Transaction {
     type Error = failure::Error;
-    fn try_from(transaction: &ton_block::Transaction) -> Result<Self> {
+    fn try_from(transaction: &tvm_block::Transaction) -> Result<Self> {
         let descr = if let TransactionDescr::Ordinary(descr) = transaction.read_description()? {
             descr
         } else {
@@ -111,16 +111,14 @@ impl TryFrom<&ton_block::Transaction> for Transaction {
                 gas_fees: 0,
                 gas_used: 0,
             },
-            TrComputePhase::Vm(ph) => {
-                ComputePhase {
-                    skipped_reason: None,
-                    exit_code: Some(ph.exit_code),
-                    exit_arg: ph.exit_arg,
-                    success: Some(ph.success),
-                    gas_fees: grams_to_u64(&ph.gas_fees)?,
-                    gas_used: ph.gas_used.as_u64(),
-                }
-            }
+            TrComputePhase::Vm(ph) => ComputePhase {
+                skipped_reason: None,
+                exit_code: Some(ph.exit_code),
+                exit_arg: ph.exit_arg,
+                success: Some(ph.success),
+                gas_fees: grams_to_u64(&ph.gas_fees)?,
+                gas_used: ph.gas_used.as_u64(),
+            },
         };
 
         let action_phase = if let Some(phase) = descr.action {
@@ -172,7 +170,7 @@ pub struct TransactionFees {
     pub in_msg_fwd_fee: u64,
     /// Fee for account storage
     pub storage_fee: u64,
-    /// Fee for processing 
+    /// Fee for processing
     pub gas_fee: u64,
     /// Deprecated. Contains the same data as total_fwd_fees field. Deprecated because of
     /// its confusing name, that is not the same with GraphQL API Transaction type's field.

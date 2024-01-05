@@ -14,7 +14,7 @@
 use crate::client::{ClientEnv, FetchMethod};
 use crate::error::{AddNetworkUrl, ClientError, ClientResult};
 use crate::net::endpoint::Endpoint;
-use crate::net::ton_gql::GraphQLQuery;
+use crate::net::tvm_gql::GraphQLQuery;
 use crate::net::types::NetworkQueriesProtocol;
 use crate::net::websocket_link::WebsocketLink;
 use crate::net::{
@@ -30,7 +30,7 @@ use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::Arc;
 use tokio::sync::{watch, Mutex, RwLock};
-use ton_types::UInt256;
+use tvm_types::UInt256;
 
 use super::ErrorCode;
 

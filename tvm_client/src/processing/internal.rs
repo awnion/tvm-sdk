@@ -1,13 +1,13 @@
-use super::ErrorCode;
 use super::fetching::fetch_account;
+use super::ErrorCode;
 use crate::abi::{Abi, ParamsOfDecodeMessage};
 use crate::client::ClientContext;
 use crate::error::{ClientError, ClientResult};
 use crate::processing::Error;
 use crate::tvm::{AccountForExecutor, ExecutionOptions, ParamsOfRunExecutor};
 use std::sync::Arc;
-use ton_block::MsgAddressInt;
-use ton_sdk::{Block, MessageId};
+use tvm_block::MsgAddressInt;
+use tvm_sdk::{Block, MessageId};
 
 const ACCOUNT_NONEXIST: u8 = 3;
 
@@ -93,8 +93,12 @@ async fn get_local_error(
         return Err(crate::tvm::Error::account_missing(address));
     }
 
-    let account: Account = serde_json::from_value(account)
-        .map_err(|err| Error::invalid_data(format!("Can not parse account for error resolving: {}", err)))?;
+    let account: Account = serde_json::from_value(account).map_err(|err| {
+        Error::invalid_data(format!(
+            "Can not parse account for error resolving: {}",
+            err
+        ))
+    })?;
 
     if let Some(last_paid) = account.last_paid {
         if last_paid > time {
@@ -147,8 +151,8 @@ pub(crate) async fn resolve_error(
             }
 
             if without_transaction {
-                original_error.data["local_error"] =
-                    serde_json::to_value(&err).map_err(crate::client::Error::cannot_serialize_result)?;
+                original_error.data["local_error"] = serde_json::to_value(&err)
+                    .map_err(crate::client::Error::cannot_serialize_result)?;
             } else {
                 original_error.data[EXIT_ARG_FIELD] = err.data[EXIT_ARG_FIELD].clone();
                 original_error.data[CONTRACT_ERROR_FIELD] = err.data[CONTRACT_ERROR_FIELD].clone();
@@ -158,16 +162,20 @@ pub(crate) async fn resolve_error(
                 Some(insert_position) => {
                     original_error.message = format!(
                         "{}.\nPossible reason: {}.{}",
-                        &original_error.message[..insert_position].trim_end().trim_end_matches("."),
+                        &original_error.message[..insert_position]
+                            .trim_end()
+                            .trim_end_matches("."),
                         remove_exit_code(&exit_code, err.message.trim_end_matches(".")),
                         &original_error.message[insert_position..],
                     )
-                },
-                None => original_error.message = format!(
-                    "{}.\nPossible reason: {}",
-                    original_error.message.trim_end_matches("."),
-                    remove_exit_code(&exit_code, &err.message),
-                )
+                }
+                None => {
+                    original_error.message = format!(
+                        "{}.\nPossible reason: {}",
+                        original_error.message.trim_end_matches("."),
+                        remove_exit_code(&exit_code, &err.message),
+                    )
+                }
             }
 
             Err(original_error)
@@ -179,10 +187,8 @@ pub(crate) async fn resolve_error(
                 message,
             );
             if original_error.code == ErrorCode::MessageExpired as u32 {
-                original_error.message = format!(
-                    "{}. Try to send it again",
-                    original_error.message,
-                );
+                original_error.message =
+                    format!("{}. Try to send it again", original_error.message,);
             }
             Err(original_error)
         }
@@ -192,8 +198,13 @@ pub(crate) async fn resolve_error(
 /// Removes exit code from internal error only if it matches exit code of original error
 fn remove_exit_code(exit_code: &Option<i64>, internal_error: &str) -> String {
     if let Some(exit_code) = exit_code {
-        regex::Regex::new(&format!(r#"(?i)([,\.]\s*)?exit\s+code(:\s*|\s+){}"#, exit_code)).unwrap()
-            .replace(internal_error, "").to_string()
+        regex::Regex::new(&format!(
+            r#"(?i)([,\.]\s*)?exit\s+code(:\s*|\s+){}"#,
+            exit_code
+        ))
+        .unwrap()
+        .replace(internal_error, "")
+        .to_string()
     } else {
         internal_error.to_string()
     }

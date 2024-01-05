@@ -11,8 +11,8 @@
 * limitations under the License.
 */
 
-use ton_block::{Number5, StateInit, StateInitLib, TickTock};
-use ton_types::{BuilderData, Cell};
+use tvm_block::{Number5, StateInit, StateInitLib, TickTock};
+use tvm_types::{BuilderData, Cell};
 
 use super::BocCacheType;
 use crate::boc::internal::{
@@ -149,7 +149,7 @@ pub fn get_code_salt(
     Ok(ResultOfGetCodeSalt { salt })
 }
 
-pub(crate)fn builder_to_cell(builder: BuilderData) -> ClientResult<Cell> {
+pub(crate) fn builder_to_cell(builder: BuilderData) -> ClientResult<Cell> {
     builder
         .into_cell()
         .map_err(|err| Error::invalid_boc(format!("can not convert builder to cell: {}", err)))

@@ -25,8 +25,8 @@ use internal::serialize_cell_to_base64;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
 use std::str::FromStr;
-use ton_block::{MsgAddrStd, MsgAddressInt, Serializable};
-use ton_types::{AccountId, BuilderData, IBitstring};
+use tvm_block::{MsgAddrStd, MsgAddressInt, Serializable};
+use tvm_types::{AccountId, BuilderData, IBitstring};
 
 #[test]
 fn test_encode_boc() {
@@ -495,18 +495,21 @@ fn parse_account() {
 fn parse_pruned_account() {
     let client = TestClient::new();
 
-    let (account, _) = deserialize_object_from_boc_bin::<ton_block::Account>(include_bytes!("test_data/account.boc")).unwrap();
+    let (account, _) = deserialize_object_from_boc_bin::<tvm_block::Account>(include_bytes!(
+        "test_data/account.boc"
+    ))
+    .unwrap();
 
     let code = account.get_code().map(|cell| cell.repr_hash());
     let data = account.get_data().map(|cell| cell.repr_hash());
     let libs = account.libraries().root().map(|cell| cell.repr_hash());
-    
+
     let cell = account.serialize().unwrap();
 
-    let proof = ton_block::MerkleProof::create(
-        &cell,
-        |hash| Some(hash) != code.as_ref() && Some(hash) != data.as_ref() && Some(hash) != libs.as_ref()
-    ).unwrap();
+    let proof = tvm_block::MerkleProof::create(&cell, |hash| {
+        Some(hash) != code.as_ref() && Some(hash) != data.as_ref() && Some(hash) != libs.as_ref()
+    })
+    .unwrap();
     let boc = proof.write_to_bytes().unwrap();
 
     let result: ResultOfParse = client
@@ -523,9 +526,15 @@ fn parse_pruned_account() {
         "0:2bb4a0e8391e7ea8877f4825064924bd41ce110fce97e939d3323999e1efbb13"
     );
     assert!(result.parsed["data"].is_null());
-    assert_eq!(result.parsed["data_hash"], "8ec587d3f253261f8b1e49c1201e912136c5feba29b184b2b56cf5727e9d79dd");
+    assert_eq!(
+        result.parsed["data_hash"],
+        "8ec587d3f253261f8b1e49c1201e912136c5feba29b184b2b56cf5727e9d79dd"
+    );
     assert!(result.parsed["code"].is_null());
-    assert_eq!(result.parsed["code_hash"], "ccbfc821853aa641af3813ebd477e26818b51e4ca23e5f6d34509215aa7123d9");
+    assert_eq!(
+        result.parsed["code_hash"],
+        "ccbfc821853aa641af3813ebd477e26818b51e4ca23e5f6d34509215aa7123d9"
+    );
 }
 
 #[test]

@@ -62,7 +62,7 @@ impl BuildInfo {
         )?;
         let meta = serde_json::from_str::<Value>(&meta_out).unwrap();
         let git_commit = exec("git", &["rev-parse", "HEAD"])?.trim().to_string();
-        let mut build_number = std::env::var("TON_BUILD_NUMBER").unwrap_or("".into());
+        let mut build_number = std::env::var("tvm_BUILD_NUMBER").unwrap_or("".into());
         let dependencies: Vec<Dep> = meta["packages"]
             .as_array()
             .unwrap()
@@ -74,7 +74,7 @@ impl BuildInfo {
             .map(|x| {
                 let name = x["name"].as_str().unwrap().to_string();
                 let version = x["version"].as_str().unwrap().to_string();
-                if build_number.is_empty() && name == "ton_client" {
+                if build_number.is_empty() && name == "tvm_client" {
                     build_number = version.split(".").map(|x| format!("{:0>3}", x)).collect();
                 }
                 let source = x["source"].as_str().unwrap_or("");

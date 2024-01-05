@@ -23,7 +23,7 @@ use crate::processing::internal::get_message_expiration_time;
 use crate::processing::types::ProcessingEvent;
 use crate::processing::Error;
 use std::sync::Arc;
-use ton_block::{Message, MsgAddressInt};
+use tvm_block::{Message, MsgAddressInt};
 
 #[derive(Serialize, Deserialize, ApiType, Default, Debug, Clone)]
 pub struct ParamsOfSendMessage {
@@ -82,8 +82,7 @@ impl SendingMessage {
         abi: Option<&Abi>,
     ) -> ClientResult<Self> {
         // Check message
-        let deserialized =
-            deserialize_object_from_boc::<Message>(&context, serialized, "message")?;
+        let deserialized = deserialize_object_from_boc::<Message>(&context, serialized, "message")?;
         let id = deserialized.cell.repr_hash().as_hex_string();
         let dst = deserialized
             .object

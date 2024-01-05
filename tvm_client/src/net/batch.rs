@@ -17,7 +17,7 @@ use crate::client::ClientContext;
 use crate::error::{AddNetworkUrl, ClientResult};
 
 use super::Error;
-use crate::net::ton_gql::ParamsOfQueryOperation;
+use crate::net::tvm_gql::ParamsOfQueryOperation;
 
 #[derive(Serialize, Deserialize, ApiType, Default, Clone)]
 pub struct ParamsOfBatchQuery {

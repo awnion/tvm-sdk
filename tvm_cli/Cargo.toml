@@ -6,9 +6,9 @@ edition = '2018'
 homepage = 'https://ton.dev'
 keywords = [ 'TON', 'SDK', 'smart contract', 'tonlabs' ]
 license = 'Apache-2.0'
-name = 'toncli'
+name = 'tvm_cli'
 readme = 'README.md'
-repository = 'https://github.com/tvmlabs/ever-sdk'
+repository = 'https://github.com/tvmlabs/tvm-sdk'
 version = '1.45.1'
 
 [dependencies]

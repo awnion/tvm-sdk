@@ -7,12 +7,12 @@ use crate::abi::encode_message::{
 use crate::abi::internal::{create_tvc_image, is_empty_pubkey, resolve_pubkey};
 use crate::abi::{FunctionHeader, ParamsOfDecodeMessageBody, Signer};
 use crate::boc::internal::{
-    deserialize_object_from_base64, deserialize_object_from_cell, get_boc_hash,
-    serialize_cell_to_base64, serialize_object_to_base64, deserialize_cell_from_base64,
+    deserialize_cell_from_base64, deserialize_object_from_base64, deserialize_object_from_cell,
+    get_boc_hash, serialize_cell_to_base64, serialize_object_to_base64,
 };
 use crate::boc::{
     parse_message, ParamsOfDecodeStateInit, ParamsOfGetCodeFromTvc, ParamsOfParse,
-    ResultOfDecodeStateInit, ResultOfGetCodeFromTvc, ResultOfEncodeBoc,
+    ResultOfDecodeStateInit, ResultOfEncodeBoc, ResultOfGetCodeFromTvc,
 };
 use crate::crypto::KeyPair;
 use crate::encoding::account_decode;
@@ -25,15 +25,15 @@ use crate::{
 use std::future::Future;
 
 use crate::boc::tvc::resolve_state_init_cell;
-use ever_struct::scheme::TVC;
 use serde_json::Value;
 use std::io::Cursor;
-use ton_abi::{Contract, PublicKeyData};
-use ton_block::{
+use tvm_abi::{Contract, PublicKeyData};
+use tvm_block::{
     CurrencyCollection, Deserializable, InternalMessageHeader, Message, Serializable, StateInit,
 };
-use ton_sdk::ContractImage;
-use ton_types::{BuilderData, IBitstring, Result};
+use tvm_sdk::ContractImage;
+use tvm_struct::scheme::TVC;
+use tvm_types::{BuilderData, IBitstring, Result};
 
 use super::*;
 
@@ -630,7 +630,9 @@ async fn test_encode_message_pubkey_internal(
 }
 
 fn gen_pubkey() -> PublicKeyData {
-    ton_types::ed25519_generate_private_key().unwrap().verifying_key()
+    tvm_types::ed25519_generate_private_key()
+        .unwrap()
+        .verifying_key()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1324,7 +1326,7 @@ async fn test_deploy_code_variants() -> Result<()> {
     .await?;
 
     let mut state_init = StateInit::default();
-    state_init.set_code(ton_types::Cell::default());
+    state_init.set_code(tvm_types::Cell::default());
     let tvc = serialize_object_to_base64(&state_init, "state init").unwrap();
     test_deploy_code_variants_with_contract(
         (Abi::Json(TINY_ABI_V24.to_owned()), tvc),
@@ -1367,8 +1369,7 @@ async fn test_deploy_code_variants_with_fn<
         public: "4c7c408ff1ddebb8d6405ee979c716a14fdd6cc08124107a61d3c25597099499".into(),
         secret: "cc8929d635719612a9478b9cd17675a39cfad52d8959e8a177389b8c0b9122a7".into(),
     };
-    let state_init_cell =
-        resolve_state_init_cell(&client.context(), &unknown_tvc.clone())?;
+    let state_init_cell = resolve_state_init_cell(&client.context(), &unknown_tvc.clone())?;
     let mut state_init =
         deserialize_object_from_cell::<StateInit>(state_init_cell.clone(), "state init")?;
 
@@ -1408,13 +1409,15 @@ async fn test_deploy_code_variants_with_fn<
     );
 
     let data = crate::abi::encode_initial_data(
-        client.context(), crate::abi::ParamsOfEncodeInitialData {
+        client.context(),
+        crate::abi::ParamsOfEncodeInitialData {
             abi: abi.clone(),
             initial_data: initial_data.clone(),
             initial_pubkey: pubkey.clone(),
             ..Default::default()
-        }
-    ).unwrap();
+        },
+    )
+    .unwrap();
     let data = deserialize_cell_from_base64(&data.data, "Encoded initial data").unwrap();
 
     state_init.set_data(data.1);
@@ -1553,11 +1556,11 @@ fn test_abi_v24_changes() {
     let client = TestClient::new();
 
     let mut state_init = StateInit::default();
-    state_init.set_code(ton_types::Cell::default());
+    state_init.set_code(tvm_types::Cell::default());
     let tvc = serialize_object_to_base64(&state_init, "state init").unwrap();
     let abi = Abi::Json(TINY_ABI_V24.to_owned());
 
-    let empty_cell = serialize_cell_to_base64(&ton_types::Cell::default(), "data cell").unwrap();
+    let empty_cell = serialize_cell_to_base64(&tvm_types::Cell::default(), "data cell").unwrap();
 
     let error = client
         .request::<_, ResultOfDecodeInitialData>(
@@ -1615,7 +1618,7 @@ fn test_abi_v24_changes() {
         .request(
             "abi.encode_boc",
             ParamsOfAbiEncodeBoc {
-                params: abi_contract.fields,                
+                params: abi_contract.fields,
                 data: json!({
                     "_pubkey": format!("0x{}", pubkey),
                     "value": 123,
@@ -1627,7 +1630,6 @@ fn test_abi_v24_changes() {
         )
         .unwrap();
     assert_eq!(result.data, encoded_data.boc);
-
 
     let error = client
         .request::<_, ResultOfEncodeMessage>(

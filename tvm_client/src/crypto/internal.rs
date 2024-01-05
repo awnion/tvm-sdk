@@ -82,7 +82,9 @@ pub(crate) fn hex_decode_secret(hex: &str) -> ClientResult<SecretBuf> {
     crate::encoding::hex_decode(hex).map(|data| SecretBuf(data))
 }
 
-pub(crate) fn hex_decode_secret_const<const N: usize>(hex: &str) -> ClientResult<SecretBufConst<N>> {
+pub(crate) fn hex_decode_secret_const<const N: usize>(
+    hex: &str,
+) -> ClientResult<SecretBufConst<N>> {
     key_from_slice(&hex_decode_secret(hex)?)
 }
 
@@ -92,14 +94,15 @@ pub(crate) fn sha256(bytes: &[u8]) -> Vec<u8> {
     hasher.finalize().to_vec()
 }
 
-pub(crate) fn ton_crc16(data: &[u8]) -> u16 {
+pub(crate) fn tvm_crc16(data: &[u8]) -> u16 {
     XMODEM.checksum(data)
 }
 
 pub(crate) fn decode_public_key(string: &String) -> ClientResult<VerifyingKey> {
     VerifyingKey::from_bytes(
         &hex_decode_secret_const(string)
-            .map_err(|err| crypto::Error::invalid_public_key(err, string))?.0
+            .map_err(|err| crypto::Error::invalid_public_key(err, string))?
+            .0,
     )
     .map_err(|err| crypto::Error::invalid_public_key(err, string))
 }
@@ -107,7 +110,8 @@ pub(crate) fn decode_public_key(string: &String) -> ClientResult<VerifyingKey> {
 pub(crate) fn decode_secret_key(string: &String) -> ClientResult<SigningKey> {
     Ok(SigningKey::from_bytes(
         &hex_decode_secret_const(string)
-            .map_err(|err| crypto::Error::invalid_secret_key(err, string))?.0
+            .map_err(|err| crypto::Error::invalid_secret_key(err, string))?
+            .0,
     ))
 }
 
@@ -161,7 +165,10 @@ pub(crate) fn sign_using_secret(
     Ok((signed, signature))
 }
 
-pub(crate) fn sign_using_keys(unsigned: &[u8], sign_key: &SigningKey) -> ClientResult<(Vec<u8>, Vec<u8>)> {
+pub(crate) fn sign_using_keys(
+    unsigned: &[u8],
+    sign_key: &SigningKey,
+) -> ClientResult<(Vec<u8>, Vec<u8>)> {
     let mut secret = SecretBuf(Vec::with_capacity(ed25519_dalek::KEYPAIR_LENGTH));
     secret.0.extend(&SecretBufConst(sign_key.to_bytes()).0);
     secret.0.extend(sign_key.verifying_key().as_bytes());

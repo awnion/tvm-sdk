@@ -1,8 +1,8 @@
 use crate::client::{binding_config, core_version};
+use crate::net;
+use chrono::TimeZone;
 use serde_json::Value;
 use std::fmt::Display;
-use chrono::TimeZone;
-use crate::net;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default, ApiType)]
 pub struct ClientError {
@@ -28,7 +28,8 @@ pub(crate) trait AddNetworkUrl: Sized {
     }
 
     async fn add_network_url(self, client: &net::ServerLink) -> Self {
-        self.add_network_url_from_state(client.state().as_ref()).await
+        self.add_network_url_from_state(client.state().as_ref())
+            .await
     }
 
     async fn add_network_url_from_context(self, client: &crate::ClientContext) -> Self {
@@ -39,35 +40,23 @@ pub(crate) trait AddNetworkUrl: Sized {
         }
     }
 
-    async fn add_endpoint(
-        self,
-        link: &net::ServerLink,
-        endpoint: &net::Endpoint,
-    ) -> Self;
+    async fn add_endpoint(self, link: &net::ServerLink, endpoint: &net::Endpoint) -> Self;
 
     async fn add_network_url_from_state(self, state: &net::NetworkState) -> Self;
 }
 
 #[async_trait::async_trait]
 impl<T: Send> AddNetworkUrl for ClientResult<T> {
-    async fn add_endpoint(
-        self,
-        link: &net::ServerLink,
-        endpoint: &net::Endpoint,
-    ) -> Self {
+    async fn add_endpoint(self, link: &net::ServerLink, endpoint: &net::Endpoint) -> Self {
         match self {
-            Err(err) => {
-                Err(err.add_endpoint(link, endpoint).await)
-            }
+            Err(err) => Err(err.add_endpoint(link, endpoint).await),
             _ => self,
         }
     }
 
     async fn add_network_url_from_state(self, state: &net::NetworkState) -> Self {
         match self {
-            Err(err) => {
-                Err(err.add_network_url_from_state(state).await)
-            }
+            Err(err) => Err(err.add_network_url_from_state(state).await),
             _ => self,
         }
     }
@@ -75,11 +64,7 @@ impl<T: Send> AddNetworkUrl for ClientResult<T> {
 
 #[async_trait::async_trait]
 impl AddNetworkUrl for ClientError {
-    async fn add_endpoint(
-        mut self,
-        link: &net::ServerLink,
-        endpoint: &net::Endpoint,
-    ) -> Self {
+    async fn add_endpoint(mut self, link: &net::ServerLink, endpoint: &net::Endpoint) -> Self {
         self.data["config_servers"] = link.config_servers().await.into();
         self.data["endpoint"] = Value::String(endpoint.query_url.clone());
         self
@@ -152,7 +137,7 @@ impl ClientError {
         self
     }
 
-    pub fn add_address(mut self, address: &ton_block::MsgAddressInt) -> ClientError {
+    pub fn add_address(mut self, address: &tvm_block::MsgAddressInt) -> ClientError {
         self.data["account_address"] = address.to_string().into();
         self
     }
@@ -165,7 +150,10 @@ impl ClientError {
 pub(crate) fn format_time(time: u32) -> String {
     format!(
         "{} ({})",
-        chrono::Local.timestamp_opt(time as i64, 0).unwrap().to_rfc2822(),
+        chrono::Local
+            .timestamp_opt(time as i64, 0)
+            .unwrap()
+            .to_rfc2822(),
         time
     )
 }

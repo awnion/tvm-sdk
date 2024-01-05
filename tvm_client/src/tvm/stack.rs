@@ -18,11 +18,11 @@ use crate::error::ClientResult;
 use crate::tvm::Error;
 use core::result::Result::{Err, Ok};
 use serde_json::Value;
-use ton_types::BuilderData;
 use std::ops::Deref;
 use std::slice::Iter;
-use ton_vm::stack::{continuation::ContinuationData, integer::IntegerData};
-use ton_vm::stack::StackItem;
+use tvm_types::BuilderData;
+use tvm_vm::stack::StackItem;
+use tvm_vm::stack::{continuation::ContinuationData, integer::IntegerData};
 
 enum ProcessingResult<'a> {
     Serialized(Value),
@@ -31,7 +31,7 @@ enum ProcessingResult<'a> {
 }
 
 #[derive(Serialize, Deserialize)]
-#[serde(tag="type", content = "value")]
+#[serde(tag = "type", content = "value")]
 enum ComplexType {
     List(Vec<Value>),
     Cell(String),
@@ -41,9 +41,9 @@ enum ComplexType {
 }
 
 fn is_equal_type(left: &Value, right: &Value) -> bool {
-    left["type"] == right["type"] &&
-    left.is_array() == right.is_array() &&
-    left.is_string() == right.is_string()
+    left["type"] == right["type"]
+        && left.is_array() == right.is_array()
+        && left.is_string() == right.is_string()
 }
 
 pub fn serialize_items<'a>(
@@ -71,7 +71,7 @@ pub fn serialize_items<'a>(
                 ProcessingResult::Serialized(value) => {
                     vec.push(value);
                     stack.push((vec, iter));
-                },
+                }
                 ProcessingResult::Nested(nested_iter) => {
                     stack.push((vec, iter));
                     stack.push((vec![], nested_iter));
@@ -129,29 +129,29 @@ pub fn serialize_item<'a>(item: &'a StackItem) -> ClientResult<Value> {
 fn process_item(item: &StackItem) -> ClientResult<ProcessingResult> {
     Ok(match item {
         StackItem::None => ProcessingResult::Serialized(Value::Null),
-        StackItem::Integer(value) =>
-            ProcessingResult::Serialized(Value::String(serialize_integer_data(value))),
+        StackItem::Integer(value) => {
+            ProcessingResult::Serialized(Value::String(serialize_integer_data(value)))
+        }
         StackItem::Tuple(items) => ProcessingResult::Nested(Box::new(items.iter())),
-        StackItem::Builder(value) => ProcessingResult::Serialized(json!(
-            ComplexType::Builder(
-                serialize_cell_to_base64(&value.deref().clone().into_cell().map_err(|err| Error::unknown_execution_error(
-                    format!("Can not parse object: {}", err)))?, "stack item `Builder`")?
-            )
-        )),
-        StackItem::Slice(value) => ProcessingResult::Serialized(json!(
-            ComplexType::Slice(
-                serialize_cell_to_base64(&value.clone().into_cell(), "stack item `Slice`")?
-            )
-        )),
-        StackItem::Cell(value) => ProcessingResult::Serialized(json!(
-            ComplexType::Cell(
-                serialize_cell_to_base64(value, "stack item `Cell`")?
-            )
-        )),
+        StackItem::Builder(value) => {
+            ProcessingResult::Serialized(json!(ComplexType::Builder(serialize_cell_to_base64(
+                &value.deref().clone().into_cell().map_err(
+                    |err| Error::unknown_execution_error(format!("Can not parse object: {}", err))
+                )?,
+                "stack item `Builder`"
+            )?)))
+        }
+        StackItem::Slice(value) => ProcessingResult::Serialized(json!(ComplexType::Slice(
+            serialize_cell_to_base64(&value.clone().into_cell(), "stack item `Slice`")?
+        ))),
+        StackItem::Cell(value) => ProcessingResult::Serialized(json!(ComplexType::Cell(
+            serialize_cell_to_base64(value, "stack item `Cell`")?
+        ))),
         StackItem::Continuation(value) => ProcessingResult::Serialized(json!(
-            ComplexType::Continuation(
-                serialize_cell_to_base64(&value.code().clone().into_cell(), "stack item `Continuation`")?
-            )
+            ComplexType::Continuation(serialize_cell_to_base64(
+                &value.code().clone().into_cell(),
+                "stack item `Continuation`"
+            )?)
         )),
     })
 }
@@ -170,15 +170,18 @@ pub fn deserialize_item(value: &Value) -> ClientResult<StackItem> {
         Value::String(s) => StackItem::integer(parse_integer_data(&s)?),
         Value::Array(array) => StackItem::tuple(deserialize_items(array.iter())?),
         Value::Object(_) => {
-            let object = serde_json::from_value(value.clone())
-                .map_err(|err| Error::invalid_input_stack(
-                    format!("Can not parse object: {}", err),value))?;
+            let object = serde_json::from_value(value.clone()).map_err(|err| {
+                Error::invalid_input_stack(format!("Can not parse object: {}", err), value)
+            })?;
             match object {
                 ComplexType::Builder(string) => {
                     let cell = deserialize_cell_from_base64(&string, "Builder")?.1;
-                    StackItem::builder(BuilderData::from_cell(&cell)
-                       .map_err(|err| Error::invalid_input_stack(
-                           format!("Can't create Builder from cell: {}", err), value))?)
+                    StackItem::builder(BuilderData::from_cell(&cell).map_err(|err| {
+                        Error::invalid_input_stack(
+                            format!("Can't create Builder from cell: {}", err),
+                            value,
+                        )
+                    })?)
                 }
                 ComplexType::Cell(string) => {
                     let cell = deserialize_cell_from_base64(&string, "Cell")?.1;

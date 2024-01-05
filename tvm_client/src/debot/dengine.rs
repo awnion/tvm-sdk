@@ -28,7 +28,7 @@ use crate::tvm::{run_tvm, ParamsOfRunTvm};
 use crate::{ClientConfig, ClientContext};
 use std::collections::VecDeque;
 use std::sync::Arc;
-use ton_abi::Contract;
+use tvm_abi::Contract;
 
 const EMPTY_CELL: &'static str = "te6ccgEBAQEAAgAAAA==";
 
@@ -52,7 +52,7 @@ fn load_abi(abi: &str) -> Result<Abi, String> {
 }
 
 // TODO: implement address validation
-pub fn load_ton_address(addr: &str) -> Result<String, String> {
+pub fn load_tvm_address(addr: &str) -> Result<String, String> {
     Ok(addr.to_owned())
 }
 
@@ -134,8 +134,8 @@ impl DEngine {
     }
 
     async fn fetch_info(ton: TonClient, addr: String, state: String) -> Result<DInfo, String> {
-        let dabi_version = fetch_target_abi_version(ton.clone(), state.clone())
-            .map_err(|e| e.to_string())?;
+        let dabi_version =
+            fetch_target_abi_version(ton.clone(), state.clone()).map_err(|e| e.to_string())?;
         let abi = load_abi(DEBOT_ABI).unwrap();
         let result = Self::run(
             ton.clone(),
@@ -377,7 +377,7 @@ impl DEngine {
                     a.name
                 ))?;
                 debug!("{}", invoke_args);
-                let debot_addr = load_ton_address(invoke_args["debot"].as_str().unwrap())?;
+                let debot_addr = load_tvm_address(invoke_args["debot"].as_str().unwrap())?;
                 let debot_action: DAction =
                     serde_json::from_value(invoke_args["action"].clone()).unwrap();
                 debug!(
@@ -588,7 +588,7 @@ impl DEngine {
         let body = result["body"].as_str().unwrap();
         let state = result["state"].as_str();
 
-        let call_itself = load_ton_address(dest)? == self.addr;
+        let call_itself = load_tvm_address(dest)? == self.addr;
         let abi = if call_itself {
             self.abi.clone()
         } else {
@@ -675,7 +675,7 @@ impl DEngine {
         }
         if (options & OPTION_TARGET_ADDR) != 0 {
             let addr = params["targetAddr"].as_str().unwrap();
-            self.target_addr = Some(load_ton_address(addr)?);
+            self.target_addr = Some(load_tvm_address(addr)?);
         }
         Ok(())
     }
@@ -779,7 +779,7 @@ impl DEngine {
         signer: Option<SigningBoxHandle>,
         state: Option<&str>,
     ) -> Result<Option<JsonValue>, String> {
-        let addr = load_ton_address(dest)?;
+        let addr = load_tvm_address(dest)?;
 
         let call_params = ParamsOfEncodeMessage {
             abi: abi.clone(),

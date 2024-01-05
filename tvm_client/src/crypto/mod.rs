@@ -66,12 +66,12 @@ pub use crate::crypto::hdkey::{
     ResultOfHDKeyPublicFromXPrv, ResultOfHDKeySecretFromXPrv, ResultOfHDKeyXPrvFromMnemonic,
 };
 pub use crate::crypto::keys::{
-    convert_public_key_to_ton_safe_format, generate_random_sign_keys, sign, verify_signature,
+    convert_public_key_to_tvm_safe_format, generate_random_sign_keys, sign, verify_signature,
     KeyPair, ParamsOfConvertPublicKeyToTonSafeFormat, ParamsOfSign, ParamsOfVerifySignature,
     ResultOfConvertPublicKeyToTonSafeFormat, ResultOfSign, ResultOfVerifySignature,
 };
 pub use crate::crypto::math::{
-    factorize, generate_random_bytes, modular_power, ton_crc16, ParamsOfFactorize,
+    factorize, generate_random_bytes, modular_power, tvm_crc16, ParamsOfFactorize,
     ParamsOfGenerateRandomBytes, ParamsOfModularPower, ParamsOfTonCrc16, ResultOfFactorize,
     ResultOfGenerateRandomBytes, ResultOfModularPower, ResultOfTonCrc16,
 };

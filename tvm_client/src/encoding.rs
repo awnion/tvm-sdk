@@ -14,13 +14,13 @@
 #![allow(dead_code)]
 
 use crate::client;
-use crate::crypto::internal::ton_crc16;
+use crate::crypto::internal::tvm_crc16;
 use crate::error::ClientResult;
-use std::str::FromStr;
 use num_bigint::BigInt;
 use num_traits::cast::NumCast;
-use ton_block::MsgAddressInt;
-use ton_types::{Cell, SliceData};
+use std::str::FromStr;
+use tvm_block::MsgAddressInt;
+use tvm_types::{Cell, SliceData};
 
 //------------------------------------------------------------------------------------------------------
 
@@ -75,14 +75,18 @@ pub(crate) fn decode_std_base64(data: &str) -> ClientResult<MsgAddressInt> {
     let vec = base64::decode(&data).map_err(|err| client::Error::invalid_address(err, &data))?;
 
     // check CRC and address tag
-    let crc = ton_crc16(&vec[..34]).to_be_bytes();
+    let crc = tvm_crc16(&vec[..34]).to_be_bytes();
 
     if crc != vec[34..36] || vec[0] & 0x3f != 0x11 {
         return Err(client::Error::invalid_address("CRC mismatch", &data).into());
     };
 
-    MsgAddressInt::with_standart(None, vec[1] as i8, SliceData::from_raw(vec[2..34].to_vec(), 256))
-        .map_err(|err| client::Error::invalid_address(err, &data).into())
+    MsgAddressInt::with_standart(
+        None,
+        vec[1] as i8,
+        SliceData::from_raw(vec[2..34].to_vec(), 256),
+    )
+    .map_err(|err| client::Error::invalid_address(err, &data).into())
 }
 
 fn encode_base64(
@@ -100,7 +104,7 @@ fn encode_base64(
         vec.extend_from_slice(&address.workchain_id.to_be_bytes());
         vec.append(&mut address.address.get_bytestring(0));
 
-        let crc = ton_crc16(&vec);
+        let crc = tvm_crc16(&vec);
         vec.extend_from_slice(&crc.to_be_bytes());
 
         let result = base64::encode(&vec);
@@ -135,8 +139,7 @@ pub(crate) fn long_num_to_json_string(num: u64) -> String {
 
 pub fn decode_abi_bigint(string: &str) -> ClientResult<BigInt> {
     let result = if string.starts_with("-0x") || string.starts_with("-0X") {
-        BigInt::parse_bytes(&string[3..].as_bytes(), 16)
-        .map(|number| -number)
+        BigInt::parse_bytes(&string[3..].as_bytes(), 16).map(|number| -number)
     } else if string.starts_with("0x") || string.starts_with("0X") {
         BigInt::parse_bytes(&string[2..].as_bytes(), 16)
     } else {
@@ -148,11 +151,9 @@ pub fn decode_abi_bigint(string: &str) -> ClientResult<BigInt> {
 
 pub fn decode_abi_number<N: NumCast>(string: &str) -> ClientResult<N> {
     let bigint = decode_abi_bigint(string)?;
-    NumCast::from(bigint)
-        .ok_or(client::Error::can_not_parse_number(string))
+    NumCast::from(bigint).ok_or(client::Error::can_not_parse_number(string))
 }
 
 pub fn slice_from_cell(cell: Cell) -> ClientResult<SliceData> {
-    SliceData::load_cell(cell)
-        .map_err(|err| client::Error::invalid_data(err))
+    SliceData::load_cell(cell).map_err(|err| client::Error::invalid_data(err))
 }

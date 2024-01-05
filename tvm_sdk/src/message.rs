@@ -12,12 +12,12 @@
 */
 
 use crate::json_helper;
-use crate::types::{StringId, grams_to_u64};
-use ton_types::Result;
+use crate::types::{grams_to_u64, StringId};
+use tvm_types::Result;
 
-use ton_block::GetRepresentationHash;
-use ton_block::{CommonMsgInfo, Message as TvmMessage};
-use ton_types::{Cell, SliceData};
+use tvm_block::GetRepresentationHash;
+use tvm_block::{CommonMsgInfo, Message as TvmMessage};
+use tvm_types::{Cell, SliceData};
 
 #[derive(Deserialize, Debug, PartialEq, Clone)]
 pub enum MessageType {
@@ -68,7 +68,7 @@ impl Message {
             id,
             body,
             msg_type,
-            value
+            value,
         })
     }
 
@@ -80,7 +80,9 @@ impl Message {
 
     // Returns message's body (as tree of cells) or None if message doesn't have once
     pub fn body(&self) -> Option<SliceData> {
-        self.body.clone().and_then(|cell| SliceData::load_cell(cell).ok())
+        self.body
+            .clone()
+            .and_then(|cell| SliceData::load_cell(cell).ok())
     }
 
     // Returns message's type

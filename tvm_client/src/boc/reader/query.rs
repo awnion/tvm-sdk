@@ -11,27 +11,29 @@
 * limitations under the License.
 */
 
+use super::parser::{CellFieldReader, CellQuery, CellValueReader};
+use crate::error::{ClientError, ClientResult};
 use serde_json::Value;
-use crate::error::{ClientResult, ClientError};
-use super::parser::{CellQuery, CellFieldReader, CellValueReader};
-use ton_types::{Cell, SliceData, HashmapE, HashmapType};
-use ton_block::types::Grams;
+use tvm_block::types::Grams;
+use tvm_types::{Cell, HashmapE, HashmapType, SliceData};
 
 fn read_value(slice: &mut SliceData, reader: &CellValueReader) -> ClientResult<Value> {
     Ok(match reader {
         CellValueReader::IntWithSize(size) => {
-            let n = slice.get_next_int(*size)
+            let n = slice
+                .get_next_int(*size)
                 .map_err(|err| ClientError::cell_invalid_query(err))?;
             Value::String(format!("{}", n))
         }
         CellValueReader::UIntWithSize(size) => {
-            let n = slice.get_next_int(*size)
+            let n = slice
+                .get_next_int(*size)
                 .map_err(|err| ClientError::cell_invalid_query(err))?;
             Value::String(format!("{}", n))
         }
         CellValueReader::Grams => {
-            let n = Grams::read_from_cell(slice)
-                .map_err(|err| ClientError::cell_invalid_query(err))?;
+            let n =
+                Grams::read_from_cell(slice).map_err(|err| ClientError::cell_invalid_query(err))?;
             Value::String(format!("{}", n))
         }
         CellValueReader::Dict(_fields) => {
@@ -52,7 +54,11 @@ fn read_value(slice: &mut SliceData, reader: &CellValueReader) -> ClientResult<V
 fn read(slice: &mut SliceData, commands: &Vec<CellFieldReader>) -> ClientResult<Value> {
     let mut values = serde_json::Map::new();
     for (index, command) in commands.iter().enumerate() {
-        let name = if command.name.is_empty() { format!("{}", index) } else { command.name.clone() };
+        let name = if command.name.is_empty() {
+            format!("{}", index)
+        } else {
+            command.name.clone()
+        };
         values.insert(name, read_value(slice, &command.value)?);
     }
     Ok(Value::Object(values))

@@ -19,9 +19,9 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_json::Value;
 use std::sync::Arc;
-use ton_client::client::ClientContext;
-use ton_client::error::ClientResult;
-use ton_client::{
+use tvm_client::client::ClientContext;
+use tvm_client::error::ClientResult;
+use tvm_client::{
     tc_create_context, tc_destroy_context, tc_destroy_string, tc_read_string, tc_request_sync,
     ContextHandle, StringData,
 };
@@ -89,7 +89,7 @@ fn parse_sync_response<R: DeserializeOwned>(response: *const String) -> Result<R
 
 fn get_api() -> ClientResult<API> {
     let context = Arc::new(ClientContext::new(Default::default())?);
-    Ok(ton_client::client::get_api_reference(context)?.api)
+    Ok(tvm_client::client::get_api_reference(context)?.api)
 }
 
 pub fn command(args: &[String]) -> Result<(), CliError> {

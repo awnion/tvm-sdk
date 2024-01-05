@@ -17,12 +17,12 @@ use super::stack;
 use super::types::{ExecutionOptions, ResolvedExecutionOptions};
 use crate::boc::internal::deserialize_object_from_boc;
 use crate::client::ClientContext;
-use crate::crypto::internal::ton_crc16;
+use crate::crypto::internal::tvm_crc16;
 use crate::error::ClientResult;
 use crate::tvm::Error;
 use std::sync::Arc;
-use ton_vm::stack::integer::IntegerData;
-use ton_vm::stack::{Stack, StackItem};
+use tvm_vm::stack::integer::IntegerData;
+use tvm_vm::stack::{Stack, StackItem};
 
 #[derive(Serialize, Deserialize, ApiType, Default, Clone)]
 pub struct ParamsOfRunGet {
@@ -59,15 +59,16 @@ pub async fn run_get(
     context: Arc<ClientContext>,
     params: ParamsOfRunGet,
 ) -> ClientResult<ResultOfRunGet> {
-    let mut account: ton_block::Account =
+    let mut account: tvm_block::Account =
         deserialize_object_from_boc(&context, &params.account, "account")?.object;
-    let options = ResolvedExecutionOptions::from_options(&context, params.execution_options).await?;
+    let options =
+        ResolvedExecutionOptions::from_options(&context, params.execution_options).await?;
 
     if account.is_none() {
-        return Err(Error::invalid_account_boc("Account is None"))
+        return Err(Error::invalid_account_boc("Account is None"));
     }
 
-    let crc = ton_crc16(params.function_name.as_bytes());
+    let crc = tvm_crc16(params.function_name.as_bytes());
     let function_id = ((crc as u32) & 0xffff) | 0x10000;
     let mut stack_in = Stack::new();
     if let Some(input) = params.input {

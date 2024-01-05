@@ -2,8 +2,8 @@ use std::slice::Iter;
 
 use crate::{error::ClientResult, ClientContext};
 use serde_json::Value;
-use ton_block::Serializable;
-use ton_types::{BuilderData, Cell, IBitstring};
+use tvm_block::Serializable;
+use tvm_types::{BuilderData, Cell, IBitstring};
 
 use super::{internal::serialize_cell_to_boc, Error};
 use crate::boc::internal::deserialize_cell_from_boc;
@@ -150,10 +150,7 @@ impl<'a> Builder<'a> {
 
     /// Append data using operation iterator until the end or the nested cell operation.
     /// Returns resulting cell or nested Builder.
-    fn build(
-        mut self,
-        context: &std::sync::Arc<ClientContext>,
-    ) -> ClientResult<BuildResult<'a>> {
+    fn build(mut self, context: &std::sync::Arc<ClientContext>) -> ClientResult<BuildResult<'a>> {
         while let Some(op) = self.input.next() {
             match op {
                 BuilderOp::Integer { size, value } => {

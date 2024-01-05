@@ -27,12 +27,12 @@ use crate::{abi::Abi, boc::BocCacheType};
 use serde_json::Value;
 use std::convert::TryFrom;
 use std::sync::{atomic::AtomicU64, Arc};
-use ton_block::{Account, CurrencyCollection, Message, MsgAddressInt, Serializable, Transaction};
-use ton_executor::{
+use tvm_block::{Account, CurrencyCollection, Message, MsgAddressInt, Serializable, Transaction};
+use tvm_executor::{
     ExecuteParams, ExecutorError, OrdinaryTransactionExecutor, TransactionExecutor,
 };
-use ton_sdk::TransactionFees;
-use ton_types::{Cell, UInt256};
+use tvm_sdk::TransactionFees;
+use tvm_types::{Cell, UInt256};
 
 #[derive(Serialize, Deserialize, ApiType, Debug, Clone)]
 #[serde(tag = "type")]
@@ -280,7 +280,7 @@ pub async fn run_executor_internal(
     )
     .await?;
 
-    let sdk_transaction = ton_sdk::Transaction::try_from(&transaction)
+    let sdk_transaction = tvm_sdk::Transaction::try_from(&transaction)
         .map_err(|err| Error::can_not_read_transaction(err))?;
 
     let fees = calc_transaction_fees(

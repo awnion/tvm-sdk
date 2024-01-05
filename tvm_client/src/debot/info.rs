@@ -12,7 +12,7 @@ pub struct DInfo {
     pub publisher: Option<String>,
     pub caption: Option<String>,
     pub author: Option<String>,
-    #[serde(deserialize_with = "validate_ton_address")]
+    #[serde(deserialize_with = "validate_tvm_address")]
     pub support: Option<String>,
     pub hello: Option<String>,
     pub language: Option<String>,
@@ -28,7 +28,7 @@ impl DInfo {
     }
 }
 
-fn validate_ton_address<'de, D>(des: D) -> Result<Option<String>, D::Error>
+fn validate_tvm_address<'de, D>(des: D) -> Result<Option<String>, D::Error>
 where
     D: Deserializer<'de>,
 {

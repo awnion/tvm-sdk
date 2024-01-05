@@ -3,7 +3,7 @@ use crate::error::{ClientError, ClientResult};
 use crate::ClientContext;
 use std::convert::TryInto;
 use std::sync::Arc;
-use ton_abi::{Token, TokenValue};
+use tvm_abi::{Token, TokenValue};
 
 #[derive(Serialize, Deserialize, Clone, Debug, ApiType, Default)]
 pub struct AbiHandle(u32);
@@ -37,9 +37,8 @@ impl Abi {
         }
     }
 
-    pub fn abi(&self) -> ClientResult<ton_abi::Contract> {
-        ton_abi::Contract::load(self.json_string()?.as_bytes())
-            .map_err(|x| Error::invalid_json(x))
+    pub fn abi(&self) -> ClientResult<tvm_abi::Contract> {
+        tvm_abi::Contract::load(self.json_string()?.as_bytes()).map_err(|x| Error::invalid_json(x))
     }
 }
 
@@ -105,14 +104,12 @@ pub struct AbiParam {
     pub init: bool,
 }
 
-impl TryInto<ton_abi::Param> for AbiParam {
+impl TryInto<tvm_abi::Param> for AbiParam {
     type Error = ClientError;
 
-    fn try_into(self) -> ClientResult<ton_abi::Param> {
-        serde_json::from_value(
-            serde_json::to_value(&self)
-                .map_err(|err| Error::invalid_json(err))?
-        ).map_err(|err| Error::invalid_json(err))
+    fn try_into(self) -> ClientResult<tvm_abi::Param> {
+        serde_json::from_value(serde_json::to_value(&self).map_err(|err| Error::invalid_json(err))?)
+            .map_err(|err| Error::invalid_json(err))
     }
 }
 
@@ -195,13 +192,15 @@ pub(crate) async fn resolve_signature_id(
         return Ok(Some(signature_id));
     }
 
-    Ok(crate::net::get_signature_id(context.clone()).await?.signature_id)
+    Ok(crate::net::get_signature_id(context.clone())
+        .await?
+        .signature_id)
 }
 
 pub(crate) async fn extend_data_to_sign(
     context: &Arc<ClientContext>,
     provided_signature_id: Option<i32>,
-    data_to_sign: Option<Vec<u8>>
+    data_to_sign: Option<Vec<u8>>,
 ) -> ClientResult<Option<Vec<u8>>> {
     if let Some(data_to_sign) = data_to_sign {
         if let Some(signature_id) = resolve_signature_id(context, provided_signature_id).await? {

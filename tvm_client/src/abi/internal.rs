@@ -4,11 +4,11 @@ use crate::encoding::hex_decode;
 use crate::error::ClientResult;
 use crate::ClientContext;
 use serde_json::Value;
-use ton_abi::PublicKeyData;
 use std::convert::TryInto;
 use std::sync::Arc;
-use ton_sdk::ContractImage;
-use ton_types::Cell;
+use tvm_abi::PublicKeyData;
+use tvm_sdk::ContractImage;
+use tvm_types::Cell;
 
 /// Combines `hex` encoded `signature` with `base64` encoded `unsigned_message`.
 /// Returns signed message encoded with `base64`.
@@ -19,7 +19,7 @@ pub(crate) fn add_sign_to_message(
     unsigned_message: &[u8],
 ) -> ClientResult<Vec<u8>> {
     let signed =
-        ton_sdk::Contract::add_sign_to_message(abi, signature, public_key, unsigned_message)
+        tvm_sdk::Contract::add_sign_to_message(abi, signature, public_key, unsigned_message)
             .map_err(|err| Error::attach_signature_failed(err))?;
     Ok(signed.serialized_message)
 }
@@ -32,9 +32,9 @@ pub(crate) fn add_sign_to_message_body(
     public_key: Option<&[u8]>,
     unsigned_body: &[u8],
 ) -> ClientResult<Vec<u8>> {
-    let unsigned = ton_sdk::Contract::deserialize_tree_to_slice(unsigned_body)
+    let unsigned = tvm_sdk::Contract::deserialize_tree_to_slice(unsigned_body)
         .map_err(|err| Error::attach_signature_failed(err))?;
-    let body = ton_abi::add_sign_to_function_call(
+    let body = tvm_abi::add_sign_to_function_call(
         abi,
         signature
             .try_into()
@@ -46,7 +46,7 @@ pub(crate) fn add_sign_to_message_body(
         unsigned,
     )
     .map_err(|err| Error::attach_signature_failed(err))?;
-    Ok(ton_types::boc::write_boc(
+    Ok(tvm_types::boc::write_boc(
         &body
             .into_cell()
             .map_err(|err| Error::attach_signature_failed(err))?,
@@ -100,7 +100,7 @@ pub(crate) fn create_tvc_image(
 
 /// Determines, if public key consists only zeroes, i.e. is empty.
 pub(crate) fn is_empty_pubkey(pubkey: &PublicKeyData) -> bool {
-    pubkey == &[0; ton_types::ED25519_PUBLIC_KEY_LENGTH]
+    pubkey == &[0; tvm_types::ED25519_PUBLIC_KEY_LENGTH]
 }
 
 /// Resolves public key from deploy set, tvc or signer, using this priority:

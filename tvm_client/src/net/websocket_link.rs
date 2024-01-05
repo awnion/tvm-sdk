@@ -17,7 +17,7 @@ use crate::error::{AddNetworkUrl, ClientError, ClientResult};
 use crate::net::endpoint::Endpoint;
 use crate::net::gql::{GraphQLMessageFromClient, GraphQLMessageFromServer};
 use crate::net::server_link::NetworkState;
-use crate::net::ton_gql::{GraphQLQuery, GraphQLQueryEvent};
+use crate::net::tvm_gql::{GraphQLQuery, GraphQLQueryEvent};
 use crate::net::{Error, NetworkConfig};
 use futures::stream::{Fuse, FusedStream};
 use futures::Sink;

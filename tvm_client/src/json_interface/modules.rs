@@ -85,7 +85,7 @@ fn register_crypto(handlers: &mut RuntimeHandlers) {
         crate::crypto::modular_power,
         crate::crypto::math::modular_power_api,
     );
-    module.register_sync_fn(crate::crypto::ton_crc16, crate::crypto::math::ton_crc16_api);
+    module.register_sync_fn(crate::crypto::tvm_crc16, crate::crypto::math::tvm_crc16_api);
     module.register_sync_fn(
         crate::crypto::generate_random_bytes,
         crate::crypto::math::generate_random_bytes_api,
@@ -94,8 +94,8 @@ fn register_crypto(handlers: &mut RuntimeHandlers) {
     // Keys
 
     module.register_sync_fn(
-        crate::crypto::convert_public_key_to_ton_safe_format,
-        crate::crypto::keys::convert_public_key_to_ton_safe_format_api,
+        crate::crypto::convert_public_key_to_tvm_safe_format,
+        crate::crypto::keys::convert_public_key_to_tvm_safe_format_api,
     );
 
     module.register_sync_fn_without_args(

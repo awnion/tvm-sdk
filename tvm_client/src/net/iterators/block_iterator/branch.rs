@@ -14,7 +14,7 @@
 
 use std::sync::Arc;
 
-use ton_block::ShardIdent;
+use tvm_block::ShardIdent;
 
 use crate::error::ClientResult;
 use crate::net::iterators::block::BlockFields;
@@ -25,12 +25,8 @@ use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Branch {
-    #[serde(
-        serialize_with = "crate::net::iterators::block::serialize_shard_ident"
-    )]
-    #[serde(
-        deserialize_with = "crate::net::iterators::block::deserialize_shard_ident"
-    )]
+    #[serde(serialize_with = "crate::net::iterators::block::serialize_shard_ident")]
+    #[serde(deserialize_with = "crate::net::iterators::block::deserialize_shard_ident")]
     pub(crate) shard: ShardIdent,
     pub(crate) block_id: String,
     pub(crate) update_time: u64,

@@ -1,9 +1,9 @@
-use crate::boc::{BocCacheType, internal::serialize_object_to_boc};
 use crate::abi::Error;
+use crate::boc::{internal::serialize_object_to_boc, BocCacheType};
 use crate::client::ClientContext;
 use crate::error::ClientResult;
 use std::sync::Arc;
-use ton_block::{Account, CurrencyCollection, MsgAddressInt};
+use tvm_block::{Account, CurrencyCollection, MsgAddressInt};
 
 //--------------------------------------------------------------------------------- encode_account
 
@@ -36,12 +36,19 @@ pub fn encode_account(
     context: Arc<ClientContext>,
     params: ParamsOfEncodeAccount,
 ) -> ClientResult<ResultOfEncodeAccount> {
-    let state_init = crate::boc::internal::deserialize_object_from_boc(&context, &params.state_init, "Account state init")?;
+    let state_init = crate::boc::internal::deserialize_object_from_boc(
+        &context,
+        &params.state_init,
+        "Account state init",
+    )?;
     let id = state_init.cell.repr_hash();
     let address = MsgAddressInt::with_standart(None, 0, id.clone().into()).unwrap();
     let mut account = Account::with_address(address);
-    account.set_balance(CurrencyCollection::from(params.balance.unwrap_or(100000000000)));
-    account.try_activate_by_init_code_hash(&state_init.object, false)
+    account.set_balance(CurrencyCollection::from(
+        params.balance.unwrap_or(100000000000),
+    ));
+    account
+        .try_activate_by_init_code_hash(&state_init.object, false)
         .map_err(|err| Error::invalid_tvc_image(err))?;
     account.set_last_tr_time(params.last_trans_lt.unwrap_or(0));
     Ok(ResultOfEncodeAccount {

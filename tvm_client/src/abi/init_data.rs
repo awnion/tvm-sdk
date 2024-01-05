@@ -1,8 +1,8 @@
 use crate::abi::types::Abi;
 use crate::abi::Error;
 use crate::boc::internal::{deserialize_cell_from_boc, serialize_cell_to_boc};
-use crate::boc::BocCacheType;
 use crate::boc::state_init::builder_to_cell;
+use crate::boc::BocCacheType;
 use crate::client::ClientContext;
 use crate::encoding::{hex_decode, slice_from_cell};
 use crate::error::ClientResult;
@@ -10,7 +10,7 @@ use serde_json;
 use serde_json::Value;
 use std::convert::TryInto;
 use std::sync::Arc;
-use ton_types::{Cell, SliceData};
+use tvm_types::{Cell, SliceData};
 
 #[derive(Serialize, Deserialize, ApiType, Default, Debug)]
 pub struct ParamsOfUpdateInitialData {
@@ -37,7 +37,7 @@ pub struct ResultOfUpdateInitialData {
 /// Updates initial account data with initial values for the contract's static variables and owner's public key.
 /// This operation is applicable only for initial account data (before deploy).
 /// If the contract is already deployed, its data doesn't contain this data section any more.
-/// 
+///
 /// Doesn't support ABI version >= 2.4. Use `encode_initial_data` instead
 #[api_function]
 pub fn update_initial_data(
@@ -74,7 +74,7 @@ fn update_initial_data_internal(
         Some(init_data) => {
             let abi = abi.json_string()?;
             let data = slice_from_cell(data)?;
-            ton_abi::json_abi::update_contract_data(&abi, &init_data.to_string(), data)
+            tvm_abi::json_abi::update_contract_data(&abi, &init_data.to_string(), data)
                 .map_err(|err| Error::encode_init_data_failed(err))?
                 .into_cell()
         }
@@ -84,23 +84,24 @@ fn update_initial_data_internal(
     match initial_pubkey {
         Some(pubkey) => {
             let data = slice_from_cell(data)?;
-            let pubkey = hex_decode(&pubkey)?
-                .try_into()
-                .map_err(|vec: Vec<u8>| Error::encode_init_data_failed(format!("invalid public key size {}", vec.len())))?;
-            Ok(
-                ton_abi::Contract::insert_pubkey(data, &pubkey)
-                    .map_err(|err| Error::encode_init_data_failed(err))?
-                    .into_cell(),
-            )
+            let pubkey = hex_decode(&pubkey)?.try_into().map_err(|vec: Vec<u8>| {
+                Error::encode_init_data_failed(format!("invalid public key size {}", vec.len()))
+            })?;
+            Ok(tvm_abi::Contract::insert_pubkey(data, &pubkey)
+                .map_err(|err| Error::encode_init_data_failed(err))?
+                .into_cell())
         }
         _ => Ok(data),
     }
 }
 
 fn default_init_data() -> ClientResult<Cell> {
-    ton_abi::Contract::insert_pubkey(Default::default(), &[0; ton_types::ED25519_PUBLIC_KEY_LENGTH])
-        .map_err(|err| Error::encode_init_data_failed(err))
-        .map(SliceData::into_cell)
+    tvm_abi::Contract::insert_pubkey(
+        Default::default(),
+        &[0; tvm_types::ED25519_PUBLIC_KEY_LENGTH],
+    )
+    .map_err(|err| Error::encode_init_data_failed(err))
+    .map(SliceData::into_cell)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, ApiType, Default)]
@@ -137,11 +138,12 @@ pub fn encode_initial_data(
         if params.initial_pubkey.is_some() {
             return Err(Error::initial_pubkey_not_supported(abi.version()));
         }
-        builder_to_cell(ton_abi::json_abi::encode_storage_fields(
+        builder_to_cell(
+            tvm_abi::json_abi::encode_storage_fields(
                 &params.abi.json_string()?,
                 params.initial_data.map(|data| data.to_string()).as_deref(),
             )
-            .map_err(|err| Error::encode_init_data_failed(err))?
+            .map_err(|err| Error::encode_init_data_failed(err))?,
         )?
     } else {
         update_initial_data_internal(
@@ -182,7 +184,7 @@ pub struct ResultOfDecodeInitialData {
 /// Decodes initial values of a contract's static variables and owner's public key from account initial data
 /// This operation is applicable only for initial account data (before deploy).
 /// If the contract is already deployed, its data doesn't contain this data section any more.
-/// 
+///
 /// Doesn't support ABI version >= 2.4. Use `decode_account_data` instead
 #[api_function]
 pub fn decode_initial_data(
@@ -204,10 +206,10 @@ pub fn decode_initial_data(
         .decode_data(data.clone(), params.allow_partial)
         .map_err(|e| Error::invalid_data_for_decode(e))?;
 
-    let initial_data = ton_abi::token::Detokenizer::detokenize_to_json_value(&tokens)
+    let initial_data = tvm_abi::token::Detokenizer::detokenize_to_json_value(&tokens)
         .map_err(|e| Error::invalid_data_for_decode(e))?;
 
-    let initial_pubkey = ton_abi::Contract::get_pubkey(&data)
+    let initial_pubkey = tvm_abi::Contract::get_pubkey(&data)
         .map_err(|e| Error::invalid_data_for_decode(e))?
         .ok_or_else(|| Error::invalid_data_for_decode("no public key in contract data"))?;
 

@@ -8,14 +8,15 @@ use std::mem;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tokio::time::sleep;
-use ton_block::MsgAddrStd;
-use ton_types::{AccountId, UInt256};
+use tvm_block::MsgAddrStd;
+use tvm_types::{AccountId, UInt256};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn test_fetch() {
     let api = sdk_services();
     let mon = MessageMonitor::new(api.clone());
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
     let info = mon.get_queue_info("1").unwrap();
     assert_eq!(info.resolved, 0);
     assert_eq!(info.unresolved, 2);
@@ -45,7 +46,8 @@ async fn test_fetch() {
 async fn test_cancel_monitor() {
     let api = sdk_services();
     let mon = MessageMonitor::new(api.clone());
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
     let info = mon.get_queue_info("1").unwrap();
     assert_eq!(info.resolved, 0);
     assert_eq!(info.unresolved, 2);
@@ -59,7 +61,8 @@ async fn test_cancel_monitor() {
 async fn test_fetch_at_least_one() {
     let api = sdk_services();
     let mon = MessageMonitor::new(api.clone());
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
     let results = mon
         .fetch_next_monitor_results("1", MonitorFetchWaitMode::NoWait)
         .await
@@ -93,7 +96,8 @@ async fn test_fetch_wait_all() {
     let mon = Arc::new(MessageMonitor::new(api.clone()));
 
     // Start monitoring for [1, 2] messages
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
 
     sleep(Duration::from_millis(1100)).await;
 
@@ -150,7 +154,8 @@ async fn test_mon_info() {
     let info = mon.get_queue_info("1").unwrap();
     assert_eq!(info.resolved, 0);
     assert_eq!(info.unresolved, 0);
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
     sleep(Duration::from_millis(1100)).await;
     let info = mon.get_queue_info("1").unwrap();
     assert_eq!(info.resolved, 0);
@@ -167,7 +172,8 @@ async fn test_buffering() {
     let api = sdk_services();
     let mon = MessageMonitor::new(api.clone());
 
-    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)]).unwrap();
+    mon.monitor_messages("1", vec![msg(1, 1), msg(2, 2)])
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(
         api.active_subscription_count(),
@@ -182,7 +188,8 @@ async fn test_buffering() {
         "first subscription should be started after 1 second"
     );
 
-    mon.monitor_messages("1", vec![msg(3, 3), msg(4, 4)]).unwrap();
+    mon.monitor_messages("1", vec![msg(3, 3), msg(4, 4)])
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(
         api.active_subscription_count(),

@@ -16,8 +16,8 @@ use crate::tvm::{run_executor, run_tvm, AccountForExecutor, ParamsOfRunExecutor,
 use std::convert::TryFrom;
 use std::fmt::Display;
 use std::sync::Arc;
-use ton_block::{Message, MsgAddressExt, Serializable};
-use ton_types::{BuilderData, IBitstring, SliceData};
+use tvm_block::{Message, MsgAddressExt, Serializable};
+use tvm_types::{BuilderData, IBitstring, SliceData};
 
 const SUPPORTED_ABI_VERSION: u8 = 2;
 const ABI_2_3: u8 = 0x32;
@@ -100,13 +100,13 @@ pub fn prepare_ext_in_message(
     msg: &Message,
     now_ms: u64,
     keypair: Option<crate::crypto::KeyPair>,
-) -> Result<(u32, u32, u32, ton_block::MsgAddressInt, Message), String> {
+) -> Result<(u32, u32, u32, tvm_block::MsgAddressInt, Message), String> {
     let config = crate::ClientConfig::default();
-    let ton_client = Arc::new(crate::ClientContext::new(config).unwrap());
+    let tvm_client = Arc::new(crate::ClientContext::new(config).unwrap());
 
     let signer = if let Some(keypair) = keypair {
-        let future = crate::crypto::get_signing_box(ton_client.clone(), keypair);
-        let signing_box = ton_client.env.block_on(future).unwrap();
+        let future = crate::crypto::get_signing_box(tvm_client.clone(), keypair);
+        let signing_box = tvm_client.env.block_on(future).unwrap();
         Signer::SigningBox {
             handle: signing_box.handle.clone(),
         }
@@ -115,12 +115,12 @@ pub fn prepare_ext_in_message(
     };
 
     let hdr = msg.ext_in_header().unwrap();
-    let dst_addr: ton_block::MsgAddressInt = hdr.dst.clone();
+    let dst_addr: tvm_block::MsgAddressInt = hdr.dst.clone();
     let meta = Metadata::try_from(hdr.src.clone()).unwrap();
 
-    let future = decode_and_fix_ext_msg(msg, now_ms, &signer, true, &meta, &ton_client);
+    let future = decode_and_fix_ext_msg(msg, now_ms, &signer, true, &meta, &tvm_client);
 
-    let result = ton_client.env.block_on(future);
+    let result = tvm_client.env.block_on(future);
 
     let (func_id, msg) = result.map_err(|e| format!("prepare_ext_in_message: {:?}", e))?;
 

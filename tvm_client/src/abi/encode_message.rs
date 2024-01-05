@@ -11,10 +11,10 @@ use crate::error::ClientResult;
 use serde_json::Value;
 use std::str::FromStr;
 use std::sync::Arc;
-use ton_abi::Contract;
-use ton_block::{CurrencyCollection, MsgAddressInt};
-use ton_sdk::{ContractImage, FunctionCallSet};
-use ton_types::Cell;
+use tvm_abi::Contract;
+use tvm_block::{CurrencyCollection, MsgAddressInt};
+use tvm_sdk::{ContractImage, FunctionCallSet};
+use tvm_types::Cell;
 
 use super::types::extend_data_to_sign;
 
@@ -45,7 +45,7 @@ pub struct DeploySet {
     /// 1. Public key from deploy set.
     /// 2. Public key, specified in TVM file.
     /// 3. Public key, provided by Signer.
-    /// 
+    ///
     /// Applicable only for contracts with ABI version < 2.4. Contract initial public key should be
     /// explicitly provided inside `initial_data` since ABI 2.4
     pub initial_pubkey: Option<String>,
@@ -314,7 +314,7 @@ fn encode_deploy(
     let address = image.msg_address(workchain);
     Ok(match signer {
         Signer::None => {
-            let message = ton_sdk::Contract::construct_deploy_message_json(
+            let message = tvm_sdk::Contract::construct_deploy_message_json(
                 &call_set.to_function_call_set(
                     pubkey,
                     processing_try_index,
@@ -330,7 +330,7 @@ fn encode_deploy(
             (message.serialized_message, None, address)
         }
         _ => {
-            let unsigned = ton_sdk::Contract::get_deploy_message_bytes_for_signing(
+            let unsigned = tvm_sdk::Contract::get_deploy_message_bytes_for_signing(
                 &call_set.to_function_call_set(
                     pubkey,
                     processing_try_index,
@@ -359,7 +359,7 @@ fn encode_int_deploy(
     value: CurrencyCollection,
 ) -> ClientResult<(Vec<u8>, MsgAddressInt)> {
     let address = image.msg_address(workchain_id);
-    let message = ton_sdk::Contract::get_int_deploy_message_bytes(
+    let message = tvm_sdk::Contract::get_int_deploy_message_bytes(
         src,
         &call_set.to_function_call_set(None, None, &context, &abi, true)?,
         image,
@@ -378,11 +378,11 @@ fn encode_empty_deploy(
     workchain: i32,
 ) -> ClientResult<(Vec<u8>, Option<Vec<u8>>, MsgAddressInt)> {
     let address = image.msg_address(workchain);
-    let message = ton_sdk::Contract::construct_deploy_message_no_constructor(image, workchain)
+    let message = tvm_sdk::Contract::construct_deploy_message_no_constructor(image, workchain)
         .map_err(|x| Error::encode_deploy_message_failed(x))?;
 
     Ok((
-        ton_sdk::Contract::serialize_message(&message)
+        tvm_sdk::Contract::serialize_message(&message)
             .map_err(|x| Error::encode_deploy_message_failed(x))?
             .0,
         None,
@@ -399,7 +399,7 @@ fn encode_empty_int_deploy(
     value: CurrencyCollection,
 ) -> ClientResult<(Vec<u8>, MsgAddressInt)> {
     let address = image.msg_address(workchain_id);
-    let message = ton_sdk::Contract::construct_int_deploy_message_no_constructor(
+    let message = tvm_sdk::Contract::construct_int_deploy_message_no_constructor(
         src,
         image,
         workchain_id,
@@ -410,7 +410,7 @@ fn encode_empty_int_deploy(
     .map_err(|x| Error::encode_deploy_message_failed(x))?;
 
     Ok((
-        ton_sdk::Contract::serialize_message(&message)
+        tvm_sdk::Contract::serialize_message(&message)
             .map_err(|x| Error::encode_deploy_message_failed(x))?
             .0,
         address,
@@ -432,7 +432,7 @@ fn encode_run(
     let address = account_decode(address)?;
     Ok(match params.signer {
         Signer::None => {
-            let message = ton_sdk::Contract::construct_call_ext_in_message_json(
+            let message = tvm_sdk::Contract::construct_call_ext_in_message_json(
                 address.clone(),
                 &call_set.to_function_call_set(
                     pubkey,
@@ -447,7 +447,7 @@ fn encode_run(
             (message.serialized_message, None, address)
         }
         _ => {
-            let unsigned = ton_sdk::Contract::get_call_message_bytes_for_signing(
+            let unsigned = tvm_sdk::Contract::get_call_message_bytes_for_signing(
                 address.clone(),
                 &call_set.to_function_call_set(
                     pubkey,
@@ -551,8 +551,14 @@ pub async fn encode_message(
     };
 
     let data_to_sign = extend_data_to_sign(&context, params.signature_id, data_to_sign).await?;
-    let (message, data_to_sign) =
-        try_to_sign_message(context.clone(), &abi_string, message, data_to_sign, &params.signer).await?;
+    let (message, data_to_sign) = try_to_sign_message(
+        context.clone(),
+        &abi_string,
+        message,
+        data_to_sign,
+        &params.signer,
+    )
+    .await?;
 
     Ok(ResultOfEncodeMessage {
         message: base64::encode(&message),
@@ -707,7 +713,7 @@ pub fn encode_internal_message(
                 .abi
                 .ok_or_else(|| Error::invalid_abi("abi is undefined"))?
                 .json_string()?;
-            let message = ton_sdk::Contract::construct_call_int_message_json(
+            let message = tvm_sdk::Contract::construct_call_int_message_json(
                 address.clone(),
                 src_address,
                 ihr_disabled,
@@ -719,7 +725,7 @@ pub fn encode_internal_message(
 
             (message.serialized_message, address)
         } else {
-            let message = ton_sdk::Contract::construct_int_message_with_body(
+            let message = tvm_sdk::Contract::construct_int_message_with_body(
                 address.clone(),
                 src_address,
                 ihr_disabled,
@@ -815,7 +821,7 @@ pub async fn encode_message_body(
     let func = call.func.clone();
     let (body, data_to_sign) = match params.signer {
         Signer::None => {
-            let body = ton_abi::encode_function_call(
+            let body = tvm_abi::encode_function_call(
                 &abi,
                 &func,
                 call.header.as_deref(),
@@ -828,7 +834,7 @@ pub async fn encode_message_body(
             (body, None)
         }
         _ => if params.is_internal {
-            ton_abi::encode_function_call(
+            tvm_abi::encode_function_call(
                 &abi,
                 &func,
                 None,
@@ -839,7 +845,7 @@ pub async fn encode_message_body(
             )
             .map(|body| (body, None))
         } else {
-            ton_abi::prepare_function_call_for_sign(
+            tvm_abi::prepare_function_call_for_sign(
                 &abi,
                 &func,
                 call.header.as_deref(),
@@ -850,7 +856,7 @@ pub async fn encode_message_body(
         }
         .map_err(|err| Error::encode_run_message_failed(err, Some(&func)))?,
     };
-    let body: Vec<u8> = ton_types::boc::write_boc(
+    let body: Vec<u8> = tvm_types::boc::write_boc(
         &body
             .clone()
             .into_cell()
